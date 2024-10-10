@@ -45,7 +45,7 @@ public class ConfigurationSecurityApplication {
                 .authorizeRequests(authorize -> authorize
                     .requestMatchers(POST, "/registery").permitAll()
                     .requestMatchers(POST, "/activate").permitAll()
-                    .requestMatchers(POST, "/login").permitAll()
+                    .requestMatchers(POST, "users/login").permitAll()
                     .requestMatchers(GET, "/schools").permitAll()
                     .requestMatchers("/roles").permitAll()
                     .anyRequest().authenticated()
