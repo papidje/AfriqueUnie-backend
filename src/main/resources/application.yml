@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: schoolapp
+
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/schoolapp3
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+
+  jpa:
+    properties:
+      hibernate:
+        default_schema: schools
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+  liquibase:
+    change-log: classpath:db/changelog/master.xml
+
+
+server:
+  servlet:
+    context-path: /api/rest
+
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+application:
+  jwt:
+    duration: 1
+    encriptionKey: b58907b9ad3493eaa357bf390e6739209cb5cfc43c3fc9647d7e0d94a0ed98dd

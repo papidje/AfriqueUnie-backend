@@ -7,12 +7,12 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 @Entity
-@Table(name = "promotion")
+@Table(name = "promotions")
 public class Promotion {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Short id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     private String name;
 

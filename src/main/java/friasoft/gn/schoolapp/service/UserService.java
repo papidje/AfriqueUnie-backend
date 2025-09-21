@@ -1,17 +1,5 @@
 package friasoft.gn.schoolapp.service;
 
-import java.sql.Date;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.stereotype.Service;
-
 import friasoft.gn.schoolapp.dto.ActivationRequest;
 import friasoft.gn.schoolapp.dto.UserRequest;
 import friasoft.gn.schoolapp.entity.Activation;
@@ -24,6 +12,13 @@ import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.sql.Date;
+import java.util.*;
 
 @Slf4j
 @AllArgsConstructor
@@ -37,7 +32,7 @@ public class UserService implements UserDetailsService{
     private BCryptPasswordEncoder passwordEncoder;
 
     public void registery(UserRequest userInput) {
-        if(userInput.email().indexOf("@") == -1) {
+        if(!userInput.email().contains("@")) {
             throw new RuntimeException("Email invalide");
         }
         Optional<User> userOptional = this.userRepository.findByEmail(userInput.email());
@@ -46,11 +41,14 @@ public class UserService implements UserDetailsService{
         }
 
         Role role = roleRepository.findById(userInput.roleId()).orElseThrow();
+        Set<Role> roles = new HashSet<>();
+        roles.add(role);
         School school = schoolRepository.findById(userInput.schoolId()).orElseThrow();
         User user = new User();
         user.setName(userInput.name());
         user.setEmail(userInput.email());
-        user.setRole(role);
+        user.setUsername(userInput.username());
+        user.setRoles(roles);
         user.setSchool(school);
         user.setPassword(this.passwordEncoder.encode(userInput.password()));
         user = this.userRepository.save(user);
@@ -77,6 +75,8 @@ public class UserService implements UserDetailsService{
         if(savedActivation.getUser().getEmail().equals(user.getEmail())) {
             user.setActive(true);
             this.userRepository.save(user);
+        } else {
+            // throws an error with right message
         }
     }
 

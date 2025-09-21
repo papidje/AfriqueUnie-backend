@@ -1,21 +1,21 @@
 package friasoft.gn.schoolapp.entity;
 
-import java.io.Serializable;
-import java.sql.Date;
-
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+import java.sql.Date;
+
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "activation")
+@Table(name = "activations")
 public class Activation implements Serializable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Short id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @JoinColumn(name = "user_id")
     @OneToOne(fetch = FetchType.LAZY)

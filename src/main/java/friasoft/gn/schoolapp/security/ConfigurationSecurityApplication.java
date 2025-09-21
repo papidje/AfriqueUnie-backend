@@ -41,12 +41,16 @@ public class ConfigurationSecurityApplication {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception{
         return
             httpSecurity
+                //.csrf(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeRequests(authorize -> authorize
-                    .requestMatchers(POST, "/registery").permitAll()
+                .authorizeHttpRequests(authorize -> authorize
+                    .requestMatchers(POST, "/users/registery").permitAll()
+                    .requestMatchers(POST, "/users/login").permitAll()
+                    .requestMatchers(POST, "/users/activate").permitAll()
                     .requestMatchers(POST, "/activate").permitAll()
-                    .requestMatchers(POST, "/login").permitAll()
                     .requestMatchers(GET, "/schools").permitAll()
+                    .requestMatchers(POST, "/schools").permitAll()
+                    .requestMatchers(GET, "/schools/hello").permitAll()
                     .requestMatchers("/roles").permitAll()
                     .anyRequest().authenticated()
                 )

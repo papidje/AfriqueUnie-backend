@@ -1,31 +1,23 @@
 package friasoft.gn.schoolapp.entity;
 
+import friasoft.gn.schoolapp.enums.CivilityEnum;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
 import java.io.Serializable;
 import java.sql.Date;
 import java.util.List;
 import java.util.Random;
 
-import friasoft.gn.schoolapp.enums.CivilityEnum;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
 @Data
 @AllArgsConstructor
 @Entity
-@Table(name = "student")
+@Table(name = "students")
 public class Student implements Serializable{
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
     private String matricule;

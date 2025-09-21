@@ -1,8 +1,5 @@
 package friasoft.gn.schoolapp.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import friasoft.gn.schoolapp.dto.ActivationRequest;
 import friasoft.gn.schoolapp.dto.LoginRequest;
 import friasoft.gn.schoolapp.dto.UserRequest;
@@ -11,16 +8,13 @@ import friasoft.gn.schoolapp.security.JwtService;
 import friasoft.gn.schoolapp.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.List;
-import java.util.Map;
-
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 
 @Slf4j
@@ -42,11 +36,12 @@ public class UserController {
     public List<UserResponse> getAll() {
         return this.userService.getAll().stream().map(
             user -> new UserResponse(
-                user.getId(), 
-                user.getName(), 
+                user.getId(),
+                user.getUsername(),
+                user.getName(),
                 user.getEmail(), 
                 user.isActive(),
-                user.getRole().getName().name()
+                user.getRoles().stream().map(role -> role.getName().name()).toList()
             )
         ).toList();
     }
@@ -54,6 +49,11 @@ public class UserController {
     @PostMapping(path = "activate")
     public void activate(@RequestBody ActivationRequest activation) {
         this.userService.activate(activation);
+    }
+
+    @PostMapping(path = "logout")
+    public void logout() {
+        this.jwtService.logout();
     }
 
     @PostMapping(path = "login")

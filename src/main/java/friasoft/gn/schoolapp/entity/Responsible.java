@@ -7,12 +7,12 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 @Entity
-@Table(name = "responsible")
+@Table(name = "responsibles")
 public class Responsible {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Short id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     @Enumerated(EnumType.STRING)
     private CivilityEnum civility;
     private String lastName;

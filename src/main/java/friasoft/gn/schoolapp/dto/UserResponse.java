@@ -1,11 +1,14 @@
 package friasoft.gn.schoolapp.dto;
 
+import java.util.List;
+
 public record UserResponse(
-    Short id,
+    Long id,
+    String username,
     String name,
     String email,
     boolean isActive,
-    String role
+    List<String> roles
 ) {
 
 }
