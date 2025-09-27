@@ -1,0 +1,113 @@
+###
+// Register
+POST http://localhost:8080/api/rest/users/registery
+Content-Type: application/json
+
+{
+  "fullname": "Séré Moussa Doumbouya",
+  "email": "papidje@yopmail.com",
+  "password": "password",
+  "username": "papidje",
+  "rolesId": [1, 2]
+}
+
+###
+// Activate
+POST http://localhost:8080/api/rest/auth/activate
+Content-Type: application/json
+
+{
+  "userMail":"papidje@yopmail.com",
+  "code":"017253"
+}
+
+###
+// Login
+POST http://localhost:8080/api/rest/auth/login
+Content-Type: application/json
+
+{
+  "userName":"papidje@yopmail.com",
+  "password":"password2"
+}
+
+###
+// Get Users
+GET http://localhost:8080/api/rest/users
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMDgwNzksImV4cCI6MTc1OTAwOTg3OSwic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbeyJhdXRob3JpdHkiOiJST0xFX0FETUlOSVNUUkFUT1IifSx7ImF1dGhvcml0eSI6IlJPTEVfU1VQRVJfQURNSU4ifV0sInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDA2NjQ0MTkxLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEifQ.PsRbtSQyS19Ft8MJi71tFJzIDPP8BLae3vFVfDVl4mM
+
+{}
+
+###
+// Refresh Token
+POST http://localhost:8080/api/rest/auth/refresh-token
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMDczNjMsImV4cCI6MTc1OTAwOTE2Mywic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbeyJhdXRob3JpdHkiOiJST0xFX0FETUlOSVNUUkFUT1IifSx7ImF1dGhvcml0eSI6IlJPTEVfU1VQRVJfQURNSU4ifV0sInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDA2NjQ0MTkxLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEifQ.Clp4hPA-IyeKnRKXBidSdJNV0L-qdCrbx4dDpROrzi0
+
+{
+  "refresh": "86c2ccfe-3c2b-4d39-b50b-17eefac3d342"
+}
+
+###
+// Logout
+POST http://localhost:8080/api/rest/auth/logout
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMDczNjMsImV4cCI6MTc1OTAwOTE2Mywic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbeyJhdXRob3JpdHkiOiJST0xFX0FETUlOSVNUUkFUT1IifSx7ImF1dGhvcml0eSI6IlJPTEVfU1VQRVJfQURNSU4ifV0sInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDA2NjQ0MTkxLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEifQ.Clp4hPA-IyeKnRKXBidSdJNV0L-qdCrbx4dDpROrzi0
+
+{}
+
+###
+// Reset Password
+POST http://localhost:8080/api/rest/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "papidje@yopmail.com"
+}
+
+###
+// New Password
+POST http://localhost:8080/api/rest/auth/new-password
+Content-Type: application/json
+
+{
+  "email": "papidje@yopmail.com",
+  "code": "163796",
+  "password": "password2"
+}
+
+
+###
+// Create School
+POST http://localhost:8080/api/rest/schools
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMDgwNzksImV4cCI6MTc1OTAwOTg3OSwic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbeyJhdXRob3JpdHkiOiJST0xFX0FETUlOSVNUUkFUT1IifSx7ImF1dGhvcml0eSI6IlJPTEVfU1VQRVJfQURNSU4ifV0sInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDA2NjQ0MTkxLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEifQ.PsRbtSQyS19Ft8MJi71tFJzIDPP8BLae3vFVfDVl4mM
+
+{
+  "name":"Afrique Unie Fria",
+  "adress":"Fira, Quartier Aviation",
+  "contact": "224 660 22 55 66",
+  "openDate":"2020-10-10",
+  "logo":"logoUrl"
+}
+
+###
+// Get School
+GET http://localhost:8080/api/rest/schools
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMTMxOTQsImV4cCI6MTc1OTAxNDk5NCwic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDEzMTk0MTg5LCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEiLCJyb2xlcyI6W3siYXV0aG9yaXR5IjoiUk9MRV9BRE1JTklTVFJBVE9SIn1dLCJ1c2VybmFtZSI6InBhcGlkamVAeW9wbWFpbC5jb20ifQ.qd-VJOKKQuUQg-8az4FLnX60u1I0RqaxwQzNQqDoo6o
+
+{}
+
+###
+// Update School
+POST http://localhost:8080/api/rest/schools/1
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMTUxNzIsImV4cCI6MTc1OTAxNjk3Miwic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDE1MTcyMzE3LCJ1c2VybmFtZSI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJyb2xlcyI6W3siYXV0aG9yaXR5IjoiUk9MRV9BRE1JTklTVFJBVE9SIn0seyJhdXRob3JpdHkiOiJST0xFX1NVUEVSX0FETUlOIn1dLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEiLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20ifQ.azJmPSghv9b0kjXiBj2LEKtK-7w4A5bcpcofOcXrK0Y
+
+{
+  "name": "Nouveau Nom école"
+}
+
+###

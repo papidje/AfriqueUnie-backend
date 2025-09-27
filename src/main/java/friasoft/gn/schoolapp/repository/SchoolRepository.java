@@ -1,9 +1,8 @@
 package friasoft.gn.schoolapp.repository;
 
+import friasoft.gn.schoolapp.entity.School;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import friasoft.gn.schoolapp.entity.School;
-
-public interface SchoolRepository extends JpaRepository<School, Short>{
+public interface SchoolRepository extends JpaRepository<School, Long>{
 
 }

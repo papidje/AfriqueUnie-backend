@@ -12,12 +12,13 @@ import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.sql.Date;
+import java.time.Instant;
 import java.util.*;
 
 @Slf4j
@@ -30,6 +31,7 @@ public class UserService implements UserDetailsService{
     private SchoolRepository schoolRepository;
     private IActivationRepository iActivationRepository;
     private BCryptPasswordEncoder passwordEncoder;
+    private NotificationService notificationService;
 
     public void registery(UserRequest userInput) {
         if(!userInput.email().contains("@")) {
@@ -40,29 +42,33 @@ public class UserService implements UserDetailsService{
             throw new RuntimeException("Email deja utilisé");
         }
 
-        Role role = roleRepository.findById(userInput.roleId()).orElseThrow();
-        Set<Role> roles = new HashSet<>();
-        roles.add(role);
-        School school = schoolRepository.findById(userInput.schoolId()).orElseThrow();
+        List<Role> roleList = roleRepository.findAllById(userInput.rolesId());
+        Set<Role> roles = new HashSet<>(roleList);
+
         User user = new User();
-        user.setName(userInput.name());
-        user.setEmail(userInput.email());
         user.setUsername(userInput.username());
+        user.setEmail(userInput.email());
+        user.setFullname(userInput.fullname());
         user.setRoles(roles);
-        user.setSchool(school);
+        if (userInput.schoolId() != null) {
+            School school = schoolRepository.findById(userInput.schoolId())
+                .orElseThrow(() -> new RuntimeException("Ecole inconnu"));
+            user.setSchool(school);
+        }
         user.setPassword(this.passwordEncoder.encode(userInput.password()));
         user = this.userRepository.save(user);
 
         Random random = new Random();
         Activation activation = new Activation();
         activation.setCode(String.format("%06d", random.nextInt(999999)));
-        activation.setRegistrationDate(new Date(System.currentTimeMillis()));
-        activation.setSchool(school);
+        activation.setRegistrationDate(Instant.now());
+        activation.setExpiration(Instant.now().plusMillis(30 * 60 * 1000));
         activation.setUser(user);
-        iActivationRepository.save(activation);
+        activation = iActivationRepository.save(activation);
+        this.notificationService.sendActivationMail(activation);
     }
-    
 
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public List<User> getAll() {
         List<User> actualList = new ArrayList<User>();
         this.userRepository.findAll().iterator().forEachRemaining(actualList::add);
@@ -70,16 +76,45 @@ public class UserService implements UserDetailsService{
     }
 
     public void activate(ActivationRequest activation) {
-        Activation savedActivation = this.iActivationRepository.findByCode(activation.code()).orElseThrow();
+        Activation savedActivation = this.iActivationRepository.findByCode(activation.code())
+            .orElseThrow(() -> new RuntimeException("Activation code invalide"));
         User user = this.userRepository.findByEmail(activation.userMail()).orElseThrow();
-        if(savedActivation.getUser().getEmail().equals(user.getEmail())) {
+        if(Instant.now().isBefore(savedActivation.getExpiration()) && savedActivation.getUser().getEmail().equals(user.getEmail())) {
             user.setActive(true);
             this.userRepository.save(user);
         } else {
-            // throws an error with right message
+            throw new RuntimeException("Activation expired");
         }
     }
 
+    public void resetPassword(Map<String, String> request) {
+        User user = this.loadUserByUsername(request.get("email"));
+        Random random = new Random();
+        Activation activation = new Activation();
+        activation.setCode(String.format("%06d", random.nextInt(999999)));
+        activation.setRegistrationDate(Instant.now());
+        activation.setExpiration(Instant.now().plusMillis(30 * 60 * 1000));
+        activation.setUser(user);
+        activation = iActivationRepository.save(activation);
+        this.notificationService.sendResetPassWordMail(activation);
+    }
+
+    public void updatePassword(Map<String, String> request) {
+        Activation savedActivation = this.iActivationRepository.findByCode(request.get("code"))
+        .orElseThrow(() -> new RuntimeException("Activation code invalide"));
+        User user = this.userRepository.findByEmail(request.get("email")).orElseThrow();
+        if(Instant.now().isBefore(savedActivation.getExpiration()) && savedActivation.getUser().getEmail().equals(user.getEmail())) {
+            user.setPassword(this.passwordEncoder.encode(request.get("password")));
+            this.userRepository.save(user);
+            this.iActivationRepository.delete(savedActivation);
+        } else {
+            throw new RuntimeException("Activation expired");
+        }
+    }
+
+    public void saveUser(User user) {
+        this.userRepository.save(user);
+    }
 
     @Override
     public User loadUserByUsername(String username) throws UsernameNotFoundException {

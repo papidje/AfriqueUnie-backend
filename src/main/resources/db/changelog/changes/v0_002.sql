@@ -1,8 +1,4 @@
-INSERT INTO schools.roles (id, name)
-values  (1, 'ADMINISTRATOR'),
-        (2, 'DIRECTOR'),
-        (3, 'ACCOUNTER'),
-        (4, 'INSTRUCTOR');
+
 
 INSERT INTO schools.class_groups (id, name)
 values  (1, 'Maternel'),

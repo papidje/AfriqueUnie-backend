@@ -9,6 +9,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -25,14 +26,23 @@ public class User implements UserDetails{
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
-    private String username;
+    @Column(nullable = false)
+    private String fullname;
 
+    private String email;
     @Column(nullable = false)
     private String password;
-    private String name;
-    private String email;
     private boolean isActive = false;
+
+    private Instant createdAt = Instant.now();
+    private Instant updatedAt = Instant.now();
+
+    @JoinColumn(name = "school_id")
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.DETACH})
+    private School school;
+    private Instant lastLoginAt = Instant.now();
+
+    private String username;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -41,10 +51,6 @@ public class User implements UserDetails{
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
-
-    @JoinColumn(name = "school_id")
-    @ManyToOne(fetch = FetchType.LAZY)
-    private School school;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -59,7 +65,6 @@ public class User implements UserDetails{
         return this.password;
     }
 
-    @Override
     public String getUsername() {
         return this.email;
     }

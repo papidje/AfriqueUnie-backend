@@ -1,9 +1,8 @@
 package friasoft.gn.schoolapp.repository;
 
+import friasoft.gn.schoolapp.entity.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import friasoft.gn.schoolapp.entity.Role;
-
-public interface RoleRepository extends JpaRepository<Role, Short>{
+public interface RoleRepository extends JpaRepository<Role, Long>{
 
 }

@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Service
+@Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
     private UserService userService;
@@ -35,7 +37,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String authorization = request.getHeader("Authorization");
         if (authorization != null && authorization.startsWith("Bearer")){
             token = authorization.substring(7);
-            savedJwt = this.jwtService.tokenByvalue(token);
+            savedJwt = this.jwtService.tokenByValue(token);
             isTokenExpired = jwtService.isTokenExpired(token);
             username = jwtService.extractUserName(token);
             userService.loadUserByUsername(username);
@@ -47,6 +49,7 @@ public class JwtFilter extends OncePerRequestFilter {
             User user = userService.loadUserByUsername(username);
             UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            authenticationToken.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
         }
 
         filterChain.doFilter(request, response);

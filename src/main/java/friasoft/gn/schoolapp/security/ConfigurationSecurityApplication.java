@@ -6,6 +6,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,6 +21,7 @@ import static org.springframework.http.HttpMethod.POST;
 
 
 @Configuration
+@EnableMethodSecurity
 @EnableWebSecurity
 public class ConfigurationSecurityApplication {
 
@@ -44,14 +46,16 @@ public class ConfigurationSecurityApplication {
                 //.csrf(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
+                    // Auth endpoints
+                    .requestMatchers("/auth/**").permitAll()
                     .requestMatchers(POST, "/users/registery").permitAll()
-                    .requestMatchers(POST, "/users/login").permitAll()
-                    .requestMatchers(POST, "/users/activate").permitAll()
-                    .requestMatchers(POST, "/activate").permitAll()
-                    .requestMatchers(GET, "/schools").permitAll()
-                    .requestMatchers(POST, "/schools").permitAll()
-                    .requestMatchers(GET, "/schools/hello").permitAll()
-                    .requestMatchers("/roles").permitAll()
+                    .requestMatchers(GET, "/users").hasRole("SUPER_ADMIN")
+                    .requestMatchers(POST, "/users").hasRole("ADMINISTRATOR")
+                    // School management
+                    .requestMatchers("/schools/**").hasAnyRole("ADMINISTRATOR","SUPER_ADMIN")
+                    // Student management
+                    .requestMatchers("/students/**").hasAnyRole("ADMINISTRATOR","TEACHER")
+                    // Any other request
                     .anyRequest().authenticated()
                 )
                 .sessionManagement(httpSecuritySessionManagementConfigurer ->

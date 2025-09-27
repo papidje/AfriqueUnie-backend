@@ -5,7 +5,7 @@ import java.util.List;
 public record UserResponse(
     Long id,
     String username,
-    String name,
+    String fullname,
     String email,
     boolean isActive,
     List<String> roles

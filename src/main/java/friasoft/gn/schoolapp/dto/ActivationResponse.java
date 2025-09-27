@@ -1,10 +1,13 @@
 package friasoft.gn.schoolapp.dto;
 
+import java.time.Instant;
+
 public record ActivationResponse(
+    String name,
     String userName,
     String userMail,
     String userRole,
-    java.sql.Date date,
+    Instant date,
     String code
 ) {
 }

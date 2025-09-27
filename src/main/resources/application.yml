@@ -4,7 +4,7 @@ spring:
 
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/schoolapp3
+    url: jdbc:postgresql://localhost:5432/schoolapp2
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -20,6 +20,12 @@ spring:
     show-sql: false
   liquibase:
     change-log: classpath:db/changelog/master.xml
+
+  mail:
+    host: msms
+    username: lllll
+    password: lllll
+
 
 
 server:

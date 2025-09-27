@@ -1,6 +1,7 @@
 package friasoft.gn.schoolapp.security;
 
 import friasoft.gn.schoolapp.entity.Jwt;
+import friasoft.gn.schoolapp.entity.RefreshToken;
 import friasoft.gn.schoolapp.entity.User;
 import friasoft.gn.schoolapp.repository.IJwtRepository;
 import friasoft.gn.schoolapp.service.UserService;
@@ -22,6 +23,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Transactional
@@ -30,6 +32,7 @@ import java.util.function.Function;
 @Slf4j
 public class JwtService {
     private static final String BEARER = "bearer";
+    public static final String REFRESH = "refresh";
     private UserService userService;
     private IJwtRepository iJwtRepository;
 //    @Value("${application.jwt.encriptionKey}")
@@ -37,19 +40,33 @@ public class JwtService {
 //    @Value("${application.jwt.duration}")
     private static long tokenDurarion = 30;
     
-    public Map<String, String> generate(String username) {
+    public Map<String, String> generate(String username, boolean fromLogin) {
         User user = userService.loadUserByUsername(username);
+        if (fromLogin) {
+            user.setLastLoginAt(Instant.now());
+            userService.saveUser(user);
+        }
         this.disableTokens(user);
-        Map<String, String> jwtMap = this.generateJwt(user);
+        final Map<String, String> jwtMap = new java.util.HashMap<>(this.generateJwt(user));
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .value(UUID.randomUUID().toString())
+                .expired(false)
+                .creation(Instant.now())
+                .expiration(Instant.now().plusSeconds(3 * 24 * 60 * 60))
+                .build();
 
         Jwt jwt = Jwt
             .builder()
             .isActive(true)
             .isExpired(false)
             .user(user)
+            .refreshToken(refreshToken)
             .jwt(jwtMap.get(BEARER))
+            .lastLoginAt(user.getLastLoginAt())
             .build();
         this.iJwtRepository.save(jwt);
+        jwtMap.put("refresh", refreshToken.getValue());
         return jwtMap;
     }
 
@@ -64,26 +81,27 @@ public class JwtService {
 
     private Map<String, String> generateJwt(User user) {
         final long currentTime = System.currentTimeMillis();
-        final long expirationTime = currentTime + tokenDurarion * 60 * 1000;
+        final long expirationTime = currentTime + 30 * 60 * 1000;
         final Map<String, Object> claims = Map.of(
-            "name", user.getName(),
+            "name", user.getFullname(),
             "email", user.getEmail(),
             "username", user.getUsername(),
             Claims.EXPIRATION, new Date(expirationTime),
             Claims.SUBJECT, user.getEmail(),
-            "roles", user.getAuthorities()
+            "roles", user.getAuthorities(),
+            "lastLoginAt", Date.from(user.getLastLoginAt())
         );
         final String bearer = Jwts.builder()
-            .setIssuedAt(new Date(currentTime))
-            .setExpiration(new Date(expirationTime))
-            .setSubject(user.getEmail())
-            .setClaims(claims)
+            .issuedAt(new Date(currentTime))
+            .expiration(new Date(expirationTime))
+            .subject(user.getEmail())
+            .claims(claims)
             .signWith(getKey(), SignatureAlgorithm.HS256)
             .compact();
         return Map.of(BEARER, bearer);
     }
 
-    public Jwt tokenByvalue(String token) {
+    public Jwt tokenByValue(String token) {
         return this.iJwtRepository.findByJwt(token).orElseThrow(() -> new EntityNotFoundException());
     }
 
@@ -134,5 +152,15 @@ public class JwtService {
             }
         ).toList();
         this.iJwtRepository.saveAll(jwts);
+    }
+
+    public Map<String, String> refreshToken(Map<String, String> refreshTokenRequest) {
+        Jwt jwt = this.iJwtRepository.findByRefreshToken(refreshTokenRequest.get(REFRESH))
+                .orElseThrow(() -> new RuntimeException("Token not found"));
+        if (jwt.getRefreshToken().isExpired() || jwt.getRefreshToken().getExpiration().isBefore(Instant.now())) {
+            throw new RuntimeException("Refresh token expired");
+        }
+        this.disableTokens(jwt.getUser());
+        return this.generate(jwt.getUser().getEmail(), false);
     }
 }

@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.sql.Date;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -18,16 +18,14 @@ public class Activation implements Serializable {
     private Long id;
 
     @JoinColumn(name = "user_id")
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.DETACH})
     private User user;
 
-    @JoinColumn(name = "school_id")
-    @ManyToOne(fetch = FetchType.LAZY)
-    private School school;
-
     @Column(name = "registration_date")
-    private Date registrationDate;
+    private Instant registrationDate;
 
     @Column(name = "code")
     private String code;
+
+    private Instant expiration;
 }

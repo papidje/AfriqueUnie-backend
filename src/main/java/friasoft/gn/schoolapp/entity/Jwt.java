@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,6 +25,13 @@ public class Jwt {
     private boolean isActive;
 
     private boolean isExpired;
+
+    private Instant createdAt = Instant.now();
+
+    private Instant lastLoginAt = Instant.now();
+
+    @OneToOne(cascade = {CascadeType.PERSIST, CascadeType.REMOVE})
+    private RefreshToken refreshToken;
 
     @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE})
     private User user;
