@@ -1,4 +1,4 @@
-package friasoft.gn.schoolapp.entity;
+package friasoft.gn.schoolapp.entity.school;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

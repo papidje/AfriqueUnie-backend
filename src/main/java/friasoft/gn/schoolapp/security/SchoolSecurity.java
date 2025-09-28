@@ -1,6 +1,6 @@
 package friasoft.gn.schoolapp.security;
 
-import friasoft.gn.schoolapp.entity.User;
+import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.enums.RoleEnum;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;

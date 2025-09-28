@@ -1,6 +1,6 @@
 package friasoft.gn.schoolapp.service;
 
-import friasoft.gn.schoolapp.entity.Activation;
+import friasoft.gn.schoolapp.entity.auth.Activation;
 import friasoft.gn.schoolapp.repository.IActivationRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;

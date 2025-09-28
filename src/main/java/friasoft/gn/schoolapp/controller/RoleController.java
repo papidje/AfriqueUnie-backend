@@ -1,15 +1,14 @@
 package friasoft.gn.schoolapp.controller;
 
-import java.util.List;
-
+import friasoft.gn.schoolapp.entity.auth.Role;
+import friasoft.gn.schoolapp.service.RoleService;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import friasoft.gn.schoolapp.entity.Role;
-import friasoft.gn.schoolapp.service.RoleService;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
 
 
 @Slf4j

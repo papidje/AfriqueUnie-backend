@@ -1,12 +1,11 @@
 package friasoft.gn.schoolapp.service;
 
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-
-import friasoft.gn.schoolapp.entity.Role;
+import friasoft.gn.schoolapp.entity.auth.Role;
 import friasoft.gn.schoolapp.repository.RoleRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @AllArgsConstructor
 @Service

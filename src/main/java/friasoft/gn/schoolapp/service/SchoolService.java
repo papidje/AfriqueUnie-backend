@@ -1,7 +1,7 @@
 package friasoft.gn.schoolapp.service;
 
-import friasoft.gn.schoolapp.entity.School;
-import friasoft.gn.schoolapp.entity.User;
+import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;

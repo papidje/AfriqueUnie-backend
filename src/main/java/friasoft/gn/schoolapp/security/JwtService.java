@@ -1,8 +1,8 @@
 package friasoft.gn.schoolapp.security;
 
-import friasoft.gn.schoolapp.entity.Jwt;
-import friasoft.gn.schoolapp.entity.RefreshToken;
-import friasoft.gn.schoolapp.entity.User;
+import friasoft.gn.schoolapp.entity.auth.Jwt;
+import friasoft.gn.schoolapp.entity.auth.RefreshToken;
+import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.repository.IJwtRepository;
 import friasoft.gn.schoolapp.service.UserService;
 import io.jsonwebtoken.Claims;

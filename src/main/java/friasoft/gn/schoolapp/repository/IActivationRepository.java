@@ -1,6 +1,6 @@
 package friasoft.gn.schoolapp.repository;
 
-import friasoft.gn.schoolapp.entity.Activation;
+import friasoft.gn.schoolapp.entity.auth.Activation;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

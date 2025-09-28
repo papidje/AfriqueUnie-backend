@@ -1,7 +1,7 @@
 package friasoft.gn.schoolapp.mapper;
 
 import friasoft.gn.schoolapp.dto.ActivationResponse;
-import friasoft.gn.schoolapp.entity.Activation;
+import friasoft.gn.schoolapp.entity.auth.Activation;
 import org.springframework.stereotype.Component;
 
 @Component

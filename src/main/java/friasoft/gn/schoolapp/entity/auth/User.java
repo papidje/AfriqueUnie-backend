@@ -1,5 +1,6 @@
-package friasoft.gn.schoolapp.entity;
+package friasoft.gn.schoolapp.entity.auth;
 
+import friasoft.gn.schoolapp.entity.school.School;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -1,40 +1,41 @@
-package friasoft.gn.schoolapp.entity;
+package friasoft.gn.schoolapp.entity.school;
 
 import friasoft.gn.schoolapp.enums.CivilityEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-import java.sql.Date;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
-@Data
-@AllArgsConstructor
 @Entity
 @Table(name = "students")
-public class Student implements Serializable{
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Student {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
-
-    private String matricule;
-
+    private Long id;
     @Enumerated(EnumType.STRING)
     private CivilityEnum civility;
 
-    private String lastName;
-
+    @Column(nullable = false, length = 100)
     private String firstName;
 
-    private Date birthDate;
+    @Column(nullable = false, length = 100)
+    private String lastName;
 
-    private String adress;
-    
-    @ManyToMany(fetch = FetchType.LAZY)
-    List<Responsible> responsibles;
+    private LocalDate birthDate;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDate createdAt = LocalDate.now();
+
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Enrollment> enrollments = new ArrayList<>();
 
     public String buildMatricule() {
         Random random = new Random();

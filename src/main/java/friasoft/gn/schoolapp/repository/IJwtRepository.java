@@ -1,6 +1,6 @@
 package friasoft.gn.schoolapp.repository;
 
-import friasoft.gn.schoolapp.entity.Jwt;
+import friasoft.gn.schoolapp.entity.auth.Jwt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;

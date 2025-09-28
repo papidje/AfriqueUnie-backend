@@ -2,10 +2,10 @@ package friasoft.gn.schoolapp.service;
 
 import friasoft.gn.schoolapp.dto.ActivationRequest;
 import friasoft.gn.schoolapp.dto.UserRequest;
-import friasoft.gn.schoolapp.entity.Activation;
-import friasoft.gn.schoolapp.entity.Role;
-import friasoft.gn.schoolapp.entity.School;
-import friasoft.gn.schoolapp.entity.User;
+import friasoft.gn.schoolapp.entity.auth.Activation;
+import friasoft.gn.schoolapp.entity.auth.Role;
+import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.IActivationRepository;
 import friasoft.gn.schoolapp.repository.RoleRepository;
 import friasoft.gn.schoolapp.repository.SchoolRepository;

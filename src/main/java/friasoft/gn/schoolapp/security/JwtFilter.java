@@ -1,7 +1,7 @@
 package friasoft.gn.schoolapp.security;
 
-import friasoft.gn.schoolapp.entity.Jwt;
-import friasoft.gn.schoolapp.entity.User;
+import friasoft.gn.schoolapp.entity.auth.Jwt;
+import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

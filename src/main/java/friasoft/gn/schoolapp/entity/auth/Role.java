@@ -1,4 +1,4 @@
-package friasoft.gn.schoolapp.entity;
+package friasoft.gn.schoolapp.entity.auth;
 
 import friasoft.gn.schoolapp.enums.RoleEnum;
 import jakarta.persistence.*;

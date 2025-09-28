@@ -1,6 +1,6 @@
 package friasoft.gn.schoolapp.controller;
 
-import friasoft.gn.schoolapp.entity.School;
+import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.service.SchoolService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
