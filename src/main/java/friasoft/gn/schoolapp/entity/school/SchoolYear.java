@@ -1,33 +1,35 @@
 package friasoft.gn.schoolapp.entity.school;
 
+import friasoft.gn.schoolapp.entity.auth.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
-@Table(name = "school_years", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"school_id", "label"})
-})
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
+@AllArgsConstructor@Entity
+@Table(name = "school_years",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"school_id", "label"}))
 public class SchoolYear {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "school_id")
+    @ManyToOne
+    @JoinColumn(name = "school_id", nullable = false)
     private School school;
 
     @Column(nullable = false, length = 20)
-    private String label; // ex: "2024-2025"
+    private String label;
 
     @Column(nullable = false)
     private LocalDate startDate;
@@ -38,6 +40,20 @@ public class SchoolYear {
     @Column(nullable = false)
     private boolean active = false;
 
-    @OneToMany(mappedBy = "year", cascade = CascadeType.ALL, orphanRemoval = true)
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
+    @ManyToOne
+    @JoinColumn(name = "updated_by")
+    private User updatedBy;
+
+    @OneToMany(mappedBy = "year", cascade = CascadeType.ALL)
     private List<SchoolClass> classes = new ArrayList<>();
 }

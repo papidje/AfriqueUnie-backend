@@ -8,7 +8,7 @@ Content-Type: application/json
   "email": "papidje@yopmail.com",
   "password": "password",
   "username": "papidje",
-  "rolesId": [1, 2]
+  "rolesId": []
 }
 
 ###
@@ -18,7 +18,7 @@ Content-Type: application/json
 
 {
   "userMail":"papidje@yopmail.com",
-  "code":"017253"
+  "code":"806370"
 }
 
 ###
@@ -28,14 +28,14 @@ Content-Type: application/json
 
 {
   "userName":"papidje@yopmail.com",
-  "password":"password2"
+  "password":"password"
 }
 
 ###
 // Get Users
 GET http://localhost:8080/api/rest/users
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMDgwNzksImV4cCI6MTc1OTAwOTg3OSwic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbeyJhdXRob3JpdHkiOiJST0xFX0FETUlOSVNUUkFUT1IifSx7ImF1dGhvcml0eSI6IlJPTEVfU1VQRVJfQURNSU4ifV0sInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDA2NjQ0MTkxLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEifQ.PsRbtSQyS19Ft8MJi71tFJzIDPP8BLae3vFVfDVl4mM
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTk1NDQxNTMsImV4cCI6MTc1OTU0NTk1Mywic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbXSwibmFtZSI6IlPDqXLDqSBNb3Vzc2EgRG91bWJvdXlhIiwiZW1haWwiOiJwYXBpZGplQHlvcG1haWwuY29tIiwibGFzdExvZ2luQXQiOjE3NTk1NDQxNTM2Mjd9.pZjYCJTpGvoNZ-oiVTTLtgC5sygfmvHZI3mPiwqq-7E
 
 {}
 

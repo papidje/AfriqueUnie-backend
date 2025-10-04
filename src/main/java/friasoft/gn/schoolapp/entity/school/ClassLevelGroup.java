@@ -5,12 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "class_levels")
-public class ClassLevel {
+@Table(name = "class_level_groups")
+public class ClassLevelGroup {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,8 +25,6 @@ public class ClassLevel {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @ManyToOne
-    @JoinColumn(name = "group_id")
-    private ClassLevelGroup group;
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL)
+    private List<ClassLevel> levels = new ArrayList<>();
 }
-

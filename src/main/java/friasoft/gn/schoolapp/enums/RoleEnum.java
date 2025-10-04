@@ -1,8 +1,10 @@
 package friasoft.gn.schoolapp.enums;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 
-@AllArgsConstructor
+//@AllArgsConstructor
+@Getter
 public enum RoleEnum {
     SUPER_ADMIN(1),
     ADMINISTRATOR(2),
@@ -10,6 +12,10 @@ public enum RoleEnum {
     TEACHER(4);
     
     private final int id;
+
+    RoleEnum (int id) {
+        this.id = id;
+    }
 
     public static RoleEnum getById(int id) {
         for(RoleEnum e : values()) {

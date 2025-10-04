@@ -42,14 +42,14 @@ public class UserService implements UserDetailsService{
             throw new RuntimeException("Email deja utilisé");
         }
 
-        List<Role> roleList = roleRepository.findAllById(userInput.rolesId());
-        Set<Role> roles = new HashSet<>(roleList);
+//        List<Role> roleList = roleRepository.findAllById(userInput.rolesId());
+//        Set<Role> roles = new HashSet<>(roleList);
 
         User user = new User();
         user.setUsername(userInput.username());
         user.setEmail(userInput.email());
         user.setFullname(userInput.fullname());
-        user.setRoles(roles);
+//        user.setRoles(roles);
         if (userInput.schoolId() != null) {
             School school = schoolRepository.findById(userInput.schoolId())
                 .orElseThrow(() -> new RuntimeException("Ecole inconnu"));
