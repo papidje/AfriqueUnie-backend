@@ -34,22 +34,25 @@ public class UserService implements UserDetailsService{
     private NotificationService notificationService;
 
     public void registery(UserRequest userInput) {
-        if(!userInput.email().contains("@")) {
+        if (!userInput.email().contains("@")) {
             throw new RuntimeException("Email invalide");
         }
         Optional<User> userOptional = this.userRepository.findByEmail(userInput.email());
-        if(userOptional.isPresent()) {
+        if (userOptional.isPresent()) {
             throw new RuntimeException("Email deja utilisé");
         }
 
-//        List<Role> roleList = roleRepository.findAllById(userInput.rolesId());
-//        Set<Role> roles = new HashSet<>(roleList);
 
         User user = new User();
         user.setUsername(userInput.username());
         user.setEmail(userInput.email());
         user.setFullname(userInput.fullname());
-//        user.setRoles(roles);
+
+        if (userInput.rolesId() != null) {
+            List<Role> roleList = roleRepository.findAllById(userInput.rolesId());
+            Set<Role> roles = new HashSet<>(roleList);
+            user.setRoles(roles);
+        }
         if (userInput.schoolId() != null) {
             School school = schoolRepository.findById(userInput.schoolId())
                 .orElseThrow(() -> new RuntimeException("Ecole inconnu"));
@@ -58,19 +61,13 @@ public class UserService implements UserDetailsService{
         user.setPassword(this.passwordEncoder.encode(userInput.password()));
         user = this.userRepository.save(user);
 
-        Random random = new Random();
-        Activation activation = new Activation();
-        activation.setCode(String.format("%06d", random.nextInt(999999)));
-        activation.setRegistrationDate(Instant.now());
-        activation.setExpiration(Instant.now().plusMillis(30 * 60 * 1000));
-        activation.setUser(user);
-        activation = iActivationRepository.save(activation);
+        Activation activation = createActivation(user);
         this.notificationService.sendActivationMail(activation);
     }
 
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public List<User> getAll() {
-        List<User> actualList = new ArrayList<User>();
+        List<User> actualList = new ArrayList<>();
         this.userRepository.findAll().iterator().forEachRemaining(actualList::add);
         return actualList;
     }
@@ -82,6 +79,7 @@ public class UserService implements UserDetailsService{
         if(Instant.now().isBefore(savedActivation.getExpiration()) && savedActivation.getUser().getEmail().equals(user.getEmail())) {
             user.setActive(true);
             this.userRepository.save(user);
+            this.iActivationRepository.delete(savedActivation);
         } else {
             throw new RuntimeException("Activation expired");
         }
@@ -89,13 +87,7 @@ public class UserService implements UserDetailsService{
 
     public void resetPassword(Map<String, String> request) {
         User user = this.loadUserByUsername(request.get("email"));
-        Random random = new Random();
-        Activation activation = new Activation();
-        activation.setCode(String.format("%06d", random.nextInt(999999)));
-        activation.setRegistrationDate(Instant.now());
-        activation.setExpiration(Instant.now().plusMillis(30 * 60 * 1000));
-        activation.setUser(user);
-        activation = iActivationRepository.save(activation);
+        Activation activation = createActivation(user);
         this.notificationService.sendResetPassWordMail(activation);
     }
 
@@ -121,5 +113,15 @@ public class UserService implements UserDetailsService{
         return this.userRepository
             .findByEmail(username)
             .orElseThrow(() -> new UsernameNotFoundException("Pas d'utilisateur pour cet identifiant"));
+    }
+
+    private Activation createActivation(User user) {
+        Random random = new Random();
+        Activation activation = new Activation();
+        activation.setCode(String.format("%06d", random.nextInt(999999)));
+        activation.setRegistrationDate(Instant.now());
+        activation.setExpiration(Instant.now().plusMillis(30 * 60 * 1000));
+        activation.setUser(user);
+        return iActivationRepository.save(activation);
     }
 }

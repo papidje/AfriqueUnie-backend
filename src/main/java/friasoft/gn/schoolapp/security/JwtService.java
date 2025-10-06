@@ -3,6 +3,7 @@ package friasoft.gn.schoolapp.security;
 import friasoft.gn.schoolapp.entity.auth.Jwt;
 import friasoft.gn.schoolapp.entity.auth.RefreshToken;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.repository.IActivationRepository;
 import friasoft.gn.schoolapp.repository.IJwtRepository;
 import friasoft.gn.schoolapp.service.UserService;
 import io.jsonwebtoken.Claims;
@@ -35,6 +36,7 @@ public class JwtService {
     public static final String REFRESH = "refresh";
     private UserService userService;
     private IJwtRepository iJwtRepository;
+    private IActivationRepository iActivationRepository;
 //    @Value("${application.jwt.encriptionKey}")
     private static String ENCRYPTION_KEY = "b58907b9ad3493eaa357bf390e6739209cb5cfc43c3fc9647d7e0d94a0ed98dd";
 //    @Value("${application.jwt.duration}")
@@ -138,10 +140,16 @@ public class JwtService {
         this.iJwtRepository.save(jwt);
     }
 
-    @Scheduled(cron = "0 */1 * * * * ")
+    @Scheduled(cron = "0 0 */1 * * * ")
     public void removeUselessToken() {
         log.info("remove useless token at {}", Instant.now());
         this.iJwtRepository.deleteAllByIsActiveAndIsExpired(false, true);
+    }
+
+    @Scheduled(cron = "0 0 */1 * * * ")
+    public void removeUselessActivation() {
+        log.info("remove useless activation at {}", Instant.now());
+        this.iActivationRepository.deleteAllByExpirationBefore(Instant.now());
     }
 
     private void disableTokens(User user) {
