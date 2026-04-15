@@ -19,11 +19,16 @@ public class School {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
     private String name;
     private String adress;
     private String contact;
     private Date openDate;
     private String logo;
+    private boolean isActive = false;
     private Instant created_at;
     private Instant updated_at;
 }

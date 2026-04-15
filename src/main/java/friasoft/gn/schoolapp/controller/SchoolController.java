@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.controller;
 
+import friasoft.gn.schoolapp.dto.ClassSubjectDtos.TeacherSummaryResponse;
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.service.SchoolService;
 import lombok.AllArgsConstructor;
@@ -25,15 +26,14 @@ public class SchoolController {
         this.schoolService.create(school);
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
     @GetMapping
     public List<School> getSchools() {
-        return this.schoolService.getAll();
+        return this.schoolService.listForAuthenticatedUser();
     }
 
     @PreAuthorize("@schoolSecurity.checkUserSchool(authentication, #schoolId)")
-//    @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @PostMapping("/{schoolId}")
+    @PutMapping("/{schoolId}")
     public School updateSchool(@PathVariable Long schoolId, @RequestBody School dto) {
         return schoolService.update(schoolId, dto);
     }
@@ -43,4 +43,23 @@ public class SchoolController {
     public void deleteSchool(@PathVariable Long schoolId) {
         schoolService.delete(schoolId);
     }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PatchMapping("/{schoolId}/active/{active}")
+    public void activateSchool(@PathVariable Long schoolId, @PathVariable boolean active) {
+        schoolService.activate(schoolId, active);
+    }
+
+    @PreAuthorize("@schoolSecurity.checkUserSchool(authentication, #schoolId)")
+    @GetMapping("/{schoolId}")
+    public School getSchool(@PathVariable Long schoolId) {
+        return schoolService.getSchool(schoolId);
+    }
+
+    @PreAuthorize("@schoolSecurity.checkUserSchool(authentication, #schoolId)")
+    @GetMapping("/{schoolId}/teachers")
+    public List<TeacherSummaryResponse> listTeachers(@PathVariable Long schoolId) {
+        return schoolService.listTeachersForSchool(schoolId);
+    }
+
 }

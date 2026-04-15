@@ -1,13 +1,13 @@
 package friasoft.gn.schoolapp.dto;
 
-import java.util.List;
+import friasoft.gn.schoolapp.entity.auth.User;
 
 public record UserRequest(
     String username,
     String fullname,
     String email,
     String password,
-    List<Long> rolesId,
+    User.UserRole role,
     Long schoolId
 ) {
 

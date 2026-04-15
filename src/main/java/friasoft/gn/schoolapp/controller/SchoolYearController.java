@@ -1,10 +1,13 @@
 package friasoft.gn.schoolapp.controller;
 
 import friasoft.gn.schoolapp.entity.school.SchoolYear;
+import friasoft.gn.schoolapp.service.SchoolService;
 import friasoft.gn.schoolapp.service.SchoolYearService;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -13,37 +16,75 @@ import java.util.List;
 @AllArgsConstructor
 public class SchoolYearController {
 
-    private SchoolYearService service;
+    private final SchoolYearService service;
+    private final SchoolService schoolService;
 
     @GetMapping("/{id}")
     public ResponseEntity<SchoolYear> getById(@PathVariable Long id) {
         return service.findById(id)
-            .map(ResponseEntity::ok)
+            .map(y -> {
+                schoolService.assertCurrentUserCanAccessSchool(y.getSchool().getId());
+                return ResponseEntity.ok(y);
+            })
             .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/school/{schoolId}")
     public List<SchoolYear> getBySchool(@PathVariable Long schoolId) {
+        schoolService.assertCurrentUserCanAccessSchool(schoolId);
         return service.findBySchool(schoolId);
     }
 
+    /** Année scolaire active pour l’établissement (après contrôle d’accès tenant). */
+    @GetMapping("/school/{schoolId}/active")
+    public ResponseEntity<SchoolYear> getActiveForSchool(@PathVariable Long schoolId) {
+        schoolService.assertCurrentUserCanAccessSchool(schoolId);
+        return service.getActiveYearForSchool(schoolId)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
-    public SchoolYear create(@RequestBody SchoolYear year) {
-        return service.save(year);
+    public ResponseEntity<SchoolYear> create(@RequestBody SchoolYear year) {
+        if (year.getSchool() == null || year.getSchool().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "school.id requis");
+        }
+        schoolService.assertCurrentUserCanAccessSchool(year.getSchool().getId());
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(service.save(year));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<SchoolYear> update(@PathVariable Long id, @RequestBody SchoolYear year) {
         return service.findById(id)
             .map(existing -> {
+                schoolService.assertCurrentUserCanAccessSchool(existing.getSchool().getId());
                 year.setId(id);
-                return ResponseEntity.ok(service.save(year));
+                if (year.getSchool() == null || year.getSchool().getId() == null) {
+                    year.setSchool(existing.getSchool());
+                } else {
+                    schoolService.assertCurrentUserCanAccessSchool(year.getSchool().getId());
+                }
+                try {
+                    return ResponseEntity.ok(service.save(year));
+                } catch (IllegalArgumentException e) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+                }
             })
             .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        service.findById(id).ifPresent(y -> service.save(y)); // ou service.delete(id) si tu implémentes delete
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        return service.findById(id)
+            .<ResponseEntity<Void>>map(y -> {
+                schoolService.assertCurrentUserCanAccessSchool(y.getSchool().getId());
+                service.deleteById(id);
+                return ResponseEntity.noContent().build();
+            })
+            .orElse(ResponseEntity.notFound().build());
     }
 }

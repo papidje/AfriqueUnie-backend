@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.entity.school;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(name = "class_levels")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ClassLevel {
 
     @Id
@@ -22,8 +24,9 @@ public class ClassLevel {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @ManyToOne
-    @JoinColumn(name = "group_id")
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", nullable = false)
+    @JsonIgnoreProperties(value = {"hibernateLazyInitializer", "handler", "levels"}, allowSetters = true)
     private ClassLevelGroup group;
 }
 

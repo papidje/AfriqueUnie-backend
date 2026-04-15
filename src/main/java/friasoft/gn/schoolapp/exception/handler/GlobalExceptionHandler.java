@@ -4,10 +4,10 @@ import friasoft.gn.schoolapp.exception.service.ExceptionHandlerService;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 
 @ControllerAdvice
-public class GlobalEcxceptionHandler {
+public class GlobalExceptionHandler {
     private final ExceptionHandlerService exceptionHandlerService;
 
-    GlobalEcxceptionHandler(ExceptionHandlerService exceptionHandlerService) {
+    GlobalExceptionHandler(ExceptionHandlerService exceptionHandlerService) {
         this.exceptionHandlerService = exceptionHandlerService;
     }
 }

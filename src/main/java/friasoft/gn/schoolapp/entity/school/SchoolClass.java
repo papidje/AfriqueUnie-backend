@@ -1,11 +1,15 @@
 package friasoft.gn.schoolapp.entity.school;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.tenancy.TenantAware;
+import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -18,17 +22,26 @@ import java.util.List;
 @Entity
 @Table(name = "school_classes",
     uniqueConstraints = @UniqueConstraint(columnNames = {"year_id", "level_id", "name"}))
-public class SchoolClass {
+@JsonIgnoreProperties({"enrollments", "fees"})
+@Filter(
+    name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
+    condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
+)
+public class SchoolClass implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "year_id", nullable = false)
+    @JsonIgnoreProperties({"classes", "school"})
     private SchoolYear year;
 
-    @ManyToOne
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "level_id", nullable = false)
     private ClassLevel level;
 
@@ -41,11 +54,11 @@ public class SchoolClass {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
     private User updatedBy;
 

@@ -20,13 +20,13 @@ public class StudentController {
     private final IStudentService service;
     private final StudentMapper mapper;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMINISTRATOR','TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
     @GetMapping
     public Page<StudentResponse> getAll(Pageable pageable) {
         return service.findAll(pageable).map(mapper::toDto);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMINISTRATOR','TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
     @GetMapping("/{id}")
     public ResponseEntity<StudentResponse> getById(@PathVariable Long id) {
         return service.findById(id)
@@ -35,14 +35,14 @@ public class StudentController {
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE')")
     @PostMapping
     public ResponseEntity<StudentResponse> create(@RequestBody StudentResponse dto) {
         Student saved = service.save(mapper.toEntity(dto));
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toDto(saved));
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMINISTRATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE')")
     @PutMapping("/{id}")
     public ResponseEntity<StudentResponse> update(@PathVariable Long id, @RequestBody StudentResponse dto) {
         return service.findById(id)

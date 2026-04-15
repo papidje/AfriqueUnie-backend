@@ -2,7 +2,9 @@ package friasoft.gn.schoolapp.controller;
 
 import friasoft.gn.schoolapp.dto.ActivationRequest;
 import friasoft.gn.schoolapp.dto.LoginRequest;
+import friasoft.gn.schoolapp.dto.RegistrationRequest;
 import friasoft.gn.schoolapp.security.JwtService;
+import friasoft.gn.schoolapp.service.RegistrationService;
 import friasoft.gn.schoolapp.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,7 @@ import java.util.Map;
 @RequestMapping("auth")
 public class AuthenticationController {
     private UserService userService;
+    private RegistrationService registrationService;
     private AuthenticationManager authenticationManager;
     private JwtService jwtService;
 
@@ -56,6 +59,11 @@ public class AuthenticationController {
     @PostMapping(path = "logout")
     public void logout() {
         this.jwtService.logout();
+    }
+
+    @PostMapping(path = "register-school-admin")
+    public void registerSchoolAdmin(@RequestBody RegistrationRequest request) {
+        this.registrationService.registerSchoolAdmin(request);
     }
 
 }

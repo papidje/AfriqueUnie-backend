@@ -1,10 +1,14 @@
 package friasoft.gn.schoolapp.entity.school;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.tenancy.TenantAware;
+import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -15,16 +19,25 @@ import java.util.List;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor@Entity
+@AllArgsConstructor
+@Entity
 @Table(name = "school_years",
     uniqueConstraints = @UniqueConstraint(columnNames = {"school_id", "label"}))
-public class SchoolYear {
+@Filter(
+    name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
+    condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
+)
+public class SchoolYear implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    /** Tenant organisation (même sémantique que {@link School#getTenantId()} et le JWT {@code tenant_id}). */
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "school_id", nullable = false)
     private School school;
 
@@ -55,5 +68,6 @@ public class SchoolYear {
     private User updatedBy;
 
     @OneToMany(mappedBy = "year", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<SchoolClass> classes = new ArrayList<>();
 }

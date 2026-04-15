@@ -3,6 +3,7 @@ package friasoft.gn.schoolapp.security;
 import friasoft.gn.schoolapp.entity.auth.Jwt;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.service.UserService;
+import friasoft.gn.schoolapp.tenancy.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,31 +28,60 @@ public class JwtFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
     }
 
+    private static boolean shouldParseBearerForAuthPath(HttpServletRequest request) {
+        String path = request.getServletPath();
+        if (!path.startsWith("/auth/")) {
+            return true;
+        }
+        return "/auth/logout".equals(path);
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String token = null;
+        String token;
         Jwt savedJwt = null;
         String username = null;
+        Long tenantId = null;
         boolean isTokenExpired = true;
 
-        String authorization = request.getHeader("Authorization");
-        if (authorization != null && authorization.startsWith("Bearer")){
-            token = authorization.substring(7);
-            savedJwt = this.jwtService.tokenByValue(token);
-            isTokenExpired = jwtService.isTokenExpired(token);
-            username = jwtService.extractUserName(token);
-            userService.loadUserByUsername(username);
-        }
+        try {
+            if (!shouldParseBearerForAuthPath(request)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-        if (!isTokenExpired
-                && savedJwt.getUser().getEmail().equals(username)
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = userService.loadUserByUsername(username);
-            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            authenticationToken.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
-        }
+            String authorization = request.getHeader("Authorization");
+            if (authorization != null && authorization.startsWith("Bearer")){
+                token = authorization.substring(7);
+                savedJwt = this.jwtService.tokenByValue(token);
+                isTokenExpired = jwtService.isTokenExpired(token);
+                username = jwtService.extractUserName(token);
+                tenantId = jwtService.extractTenantId(token);
+                if (tenantId == null && savedJwt.getUser().getSchool() != null) {
+                    tenantId = savedJwt.getUser().getSchool().getId();
+                }
+                boolean isSuperAdmin = savedJwt.getUser().getRole() == User.UserRole.SUPER_ADMIN;
+                if (!isSuperAdmin && tenantId == null) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Tenant manquant dans le JWT");
+                    return;
+                }
+                TenantContext.setTenantId(tenantId);
+                userService.loadUserByUsername(username);
+            }
 
-        filterChain.doFilter(request, response);
+            if (!isTokenExpired
+                    && savedJwt != null
+                    && savedJwt.getUser().getEmail().equals(username)
+                    && SecurityContextHolder.getContext().getAuthentication() == null) {
+                User user = userService.loadUserByUsername(username);
+                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                authenticationToken.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
+            }
+
+            filterChain.doFilter(request, response);
+        } finally {
+            TenantContext.clear();
+        }
     }
 }

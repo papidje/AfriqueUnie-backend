@@ -3,16 +3,16 @@ package friasoft.gn.schoolapp.service;
 import friasoft.gn.schoolapp.dto.ActivationRequest;
 import friasoft.gn.schoolapp.dto.UserRequest;
 import friasoft.gn.schoolapp.entity.auth.Activation;
-import friasoft.gn.schoolapp.entity.auth.Role;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.IActivationRepository;
-import friasoft.gn.schoolapp.repository.RoleRepository;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,7 +27,6 @@ import java.util.*;
 public class UserService implements UserDetailsService{
 
     private UserRepository userRepository;
-    private RoleRepository roleRepository;
     private SchoolRepository schoolRepository;
     private IActivationRepository iActivationRepository;
     private BCryptPasswordEncoder passwordEncoder;
@@ -48,16 +47,13 @@ public class UserService implements UserDetailsService{
         user.setEmail(userInput.email());
         user.setFullname(userInput.fullname());
 
-        if (userInput.rolesId() != null) {
-            List<Role> roleList = roleRepository.findAllById(userInput.rolesId());
-            Set<Role> roles = new HashSet<>(roleList);
-            user.setRoles(roles);
-        }
         if (userInput.schoolId() != null) {
             School school = schoolRepository.findById(userInput.schoolId())
                 .orElseThrow(() -> new RuntimeException("Ecole inconnu"));
             user.setSchool(school);
+            user.setTenantId(school.getId());
         }
+        user.setRole(resolveRole(userInput));
         user.setPassword(this.passwordEncoder.encode(userInput.password()));
         user = this.userRepository.save(user);
 
@@ -65,7 +61,12 @@ public class UserService implements UserDetailsService{
         this.notificationService.sendActivationMail(activation);
     }
 
-    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public void sendActivationEmail(User user) {
+        Activation activation = createActivation(user);
+        this.notificationService.sendActivationMail(activation);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'SUPER_ADMIN')")
     public List<User> getAll() {
         List<User> actualList = new ArrayList<>();
         this.userRepository.findAll().iterator().forEachRemaining(actualList::add);
@@ -115,6 +116,11 @@ public class UserService implements UserDetailsService{
             .orElseThrow(() -> new UsernameNotFoundException("Pas d'utilisateur pour cet identifiant"));
     }
 
+    public User getUserInfo() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return (User) authentication.getPrincipal();
+    }
+
     private Activation createActivation(User user) {
         Random random = new Random();
         Activation activation = new Activation();
@@ -123,5 +129,22 @@ public class UserService implements UserDetailsService{
         activation.setExpiration(Instant.now().plusMillis(30 * 60 * 1000));
         activation.setUser(user);
         return iActivationRepository.save(activation);
+    }
+
+    public List<User> getAdminBySchool(Long schoolId) {
+        List<User> actualList = new ArrayList<>();
+        this.userRepository.findAllBySchoolId(schoolId).iterator().forEachRemaining(actualList::add);
+        return actualList;
+    }
+
+    public List<User> getUnassignedUsers(String term) {
+        return this.userRepository.searchByKeywordAndNoSchool(term);
+    }
+
+    private User.UserRole resolveRole(UserRequest userInput) {
+        if (userInput.role() != null) {
+            return userInput.role();
+        }
+        return userInput.schoolId() != null ? User.UserRole.ADMIN_ECOLE : User.UserRole.STAFF;
     }
 }

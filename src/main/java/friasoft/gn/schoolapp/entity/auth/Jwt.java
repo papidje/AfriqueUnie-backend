@@ -20,6 +20,7 @@ public class Jwt {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
+    @Column(length = 4096)
     private String jwt;
 
     private boolean isActive;

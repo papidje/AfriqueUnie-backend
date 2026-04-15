@@ -3,8 +3,10 @@ package friasoft.gn.schoolapp.security;
 import friasoft.gn.schoolapp.entity.auth.Jwt;
 import friasoft.gn.schoolapp.entity.auth.RefreshToken;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.IActivationRepository;
 import friasoft.gn.schoolapp.repository.IJwtRepository;
+import friasoft.gn.schoolapp.repository.TenantRepository;
 import friasoft.gn.schoolapp.service.UserService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -37,6 +39,7 @@ public class JwtService {
     private UserService userService;
     private IJwtRepository iJwtRepository;
     private IActivationRepository iActivationRepository;
+    private TenantRepository tenantRepository;
 //    @Value("${application.jwt.encriptionKey}")
     private static String ENCRYPTION_KEY = "b58907b9ad3493eaa357bf390e6739209cb5cfc43c3fc9647d7e0d94a0ed98dd";
 //    @Value("${application.jwt.duration}")
@@ -75,6 +78,10 @@ public class JwtService {
     public String extractUserName(String token) {
         return this.getClain(token, Claims::getSubject);
     }
+
+    public Long extractTenantId(String token) {
+        return this.getClain(token, claims -> claims.get("tenant_id", Long.class));
+    }
     
     public boolean isTokenExpired(String token) {
         Date expirationDate = getExpirationDateFromToken(token);
@@ -84,15 +91,21 @@ public class JwtService {
     private Map<String, String> generateJwt(User user) {
         final long currentTime = System.currentTimeMillis();
         final long expirationTime = currentTime + 30 * 60 * 1000;
-        final Map<String, Object> claims = Map.of(
-            "name", user.getFullname(),
-            "email", user.getEmail(),
-            "username", user.getUsername(),
-            Claims.EXPIRATION, new Date(expirationTime),
-            Claims.SUBJECT, user.getEmail(),
-            "roles", user.getAuthorities(),
-            "lastLoginAt", Date.from(user.getLastLoginAt())
-        );
+        final Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("name", user.getFullname());
+        claims.put("email", user.getEmail());
+        claims.put("username", user.getUsername());
+        claims.put("tenant_id", user.getTenantId());
+        claims.put(Claims.EXPIRATION, new Date(expirationTime));
+        claims.put(Claims.SUBJECT, user.getEmail());
+        claims.put("roles", user.getAuthorities());
+        claims.put("lastLoginAt", Date.from(user.getLastLoginAt()));
+        if (user.getRole() != User.UserRole.SUPER_ADMIN) {
+            String headerTitle = resolveHeaderTitle(user);
+            if (headerTitle != null && !headerTitle.isBlank()) {
+                claims.put("header_title", headerTitle);
+            }
+        }
         final String bearer = Jwts.builder()
             .issuedAt(new Date(currentTime))
             .expiration(new Date(expirationTime))
@@ -101,6 +114,31 @@ public class JwtService {
             .signWith(getKey(), SignatureAlgorithm.HS256)
             .compact();
         return Map.of(BEARER, bearer);
+    }
+
+    private String resolveHeaderTitle(User user) {
+        if (user.getRole() == User.UserRole.ADMIN_ECOLE) {
+            Long tenantId = user.getTenantId();
+            if (tenantId == null) {
+                return null;
+            }
+            return tenantRepository.findById(tenantId)
+                .map(t -> t.getName())
+                .filter(n -> n != null && !n.isBlank())
+                .orElse(null);
+        }
+        if (user.getRole() == User.UserRole.STAFF || user.getRole() == User.UserRole.TEACHER) {
+            School school = user.getSchool();
+            if (school == null) {
+                return null;
+            }
+            String name = school.getName();
+            if (name == null || name.isBlank()) {
+                return null;
+            }
+            return name;
+        }
+        return null;
     }
 
     public Jwt tokenByValue(String token) {
@@ -113,8 +151,8 @@ public class JwtService {
     }
 
     private Date getExpirationDateFromToken(String token) {
-        this.getClain(token, Claims::getExpiration);
-        return new Date();
+        return this.getClain(token, Claims::getExpiration);
+//        return new Date();
     }
 
     private <T> T getClain(String token, Function<Claims, T> function) {

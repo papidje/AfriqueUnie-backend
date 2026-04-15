@@ -1,19 +1,22 @@
 package friasoft.gn.schoolapp.entity.auth;
 
 import friasoft.gn.schoolapp.entity.school.School;
+import friasoft.gn.schoolapp.tenancy.TenantAware;
+import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
 
 @Getter
 @Setter
@@ -21,7 +24,22 @@ import java.util.Set;
 @NoArgsConstructor
 @Entity
 @Table(name = "users")
-public class User implements UserDetails{
+@FilterDef(
+    name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
+    parameters = @ParamDef(name = TenantHibernateFilterAspect.TENANT_FILTER_PARAM, type = Long.class)
+)
+@Filter(
+    name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
+    condition = "coalesce(tenant_id, school_id) = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
+)
+public class User implements UserDetails, TenantAware {
+    /** Valeurs persistées dans {@code schools.users.role} ; JWT = {@code ROLE_} + nom d’énum. */
+    public enum UserRole {
+        SUPER_ADMIN,
+        ADMIN_ECOLE,
+        STAFF,
+        TEACHER
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,6 +51,13 @@ public class User implements UserDetails{
     private String email;
     @Column(nullable = false)
     private String password;
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", length = 30)
+    private UserRole role = UserRole.STAFF;
+
     private boolean isActive = false;
 
     private Instant createdAt = Instant.now();
@@ -45,20 +70,10 @@ public class User implements UserDetails{
 
     private String username;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "users_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
-    private Set<Role> roles = new HashSet<>();
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return this.roles
-                .stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName()))
-                .toList();
+        UserRole effectiveRole = this.role != null ? this.role : UserRole.STAFF;
+        return java.util.List.of(new SimpleGrantedAuthority("ROLE_" + effectiveRole.name()));
     }
 
     @Override
@@ -88,5 +103,23 @@ public class User implements UserDetails{
     @Override
     public boolean isEnabled() {
         return this.isActive;
+    }
+
+    @Override
+    @Transient
+    public Long getTenantId() {
+        if (this.tenantId != null) {
+            return this.tenantId;
+        }
+        return this.school != null ? this.school.getId() : null;
+    }
+
+    @Override
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
+        if (tenantId == null) {
+            this.school = null;
+            return;
+        }
     }
 }

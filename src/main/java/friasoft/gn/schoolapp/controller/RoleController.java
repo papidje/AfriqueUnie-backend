@@ -1,6 +1,5 @@
 package friasoft.gn.schoolapp.controller;
 
-import friasoft.gn.schoolapp.entity.auth.Role;
 import friasoft.gn.schoolapp.service.RoleService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +19,7 @@ public class RoleController {
     private RoleService roleService;
 
     @GetMapping
-    public List<Role> getRoles() {
+    public List<String> getRoles() {
         return this.roleService.getAll();
     }
 }

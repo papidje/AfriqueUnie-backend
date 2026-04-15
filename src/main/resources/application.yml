@@ -4,7 +4,7 @@ spring:
 
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/schoolapp
+    url: jdbc:postgresql://localhost:5432/schoolapp2
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver

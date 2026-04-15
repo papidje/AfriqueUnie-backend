@@ -7,6 +7,7 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,10 +21,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
-
-import static org.springframework.http.HttpMethod.GET;
-import static org.springframework.http.HttpMethod.POST;
-
 
 @Configuration
 @EnableMethodSecurity
@@ -54,13 +51,11 @@ public class ConfigurationSecurityApplication {
                 .authorizeHttpRequests(authorize -> authorize
                     // Auth endpoints
                     .requestMatchers("/auth/**").permitAll()
-                    .requestMatchers(POST, "/users/registery").permitAll()
-                    .requestMatchers(GET, "/users").hasRole("SUPER_ADMIN")
-                    .requestMatchers(POST, "/users").hasRole("ADMINISTRATOR")
-                    // School management
-                    .requestMatchers("/schools/**").hasAnyRole("ADMINISTRATOR","SUPER_ADMIN")
-                    // Student management
-                    .requestMatchers("/students/**").hasAnyRole("ADMINISTRATOR","TEACHER")
+                    // Inscription utilisateur (hors JWT)
+                    .requestMatchers(HttpMethod.POST, "/users/registery").permitAll()
+                    // Super admin (context-path /api/rest en préfixe réel)
+                    .requestMatchers("/super-admin/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers("/superadmin/**").hasRole("SUPER_ADMIN")
                     // Any other request
                     .anyRequest().authenticated()
                 )
@@ -75,7 +70,7 @@ public class ConfigurationSecurityApplication {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 

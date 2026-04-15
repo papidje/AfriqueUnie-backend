@@ -1,3 +1,26 @@
+# Même ordre que master.xml (éviter includeAll : fichiers orphelins dans changes/).
 databaseChangeLog:
-    - includeAll:
-        path: db/changelog/changes/
+  - include:
+      file: changes/v0_001.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/v0_002.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/v0_003.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/v0_004.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/v0_005.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/v0_006.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/v0_007.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/v0_008.sql
+      relativeToChangelogFile: true
