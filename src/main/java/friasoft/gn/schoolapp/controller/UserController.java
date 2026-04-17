@@ -1,11 +1,13 @@
 package friasoft.gn.schoolapp.controller;
 
-import friasoft.gn.schoolapp.dto.UserRequest;
+import friasoft.gn.schoolapp.dto.InviteUserDTO;
+import friasoft.gn.schoolapp.dto.InviteUserResponse;
 import friasoft.gn.schoolapp.dto.UserResponse;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,12 +27,6 @@ public class UserController {
             .stream()
             .map(this::mapToUserResponse)
             .toList();
-    }
-
-    @PostMapping("registery")
-    public void registery(@RequestBody UserRequest user) {
-        log.info("Registery");
-        this.userService.registery(user);
     }
 
     @GetMapping("/userInfo")
@@ -54,6 +50,13 @@ public class UserController {
             .stream()
             .map(this::mapToUserResponse)
             .toList();
+    }
+
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping("/invite")
+    public InviteUserResponse inviteUser(@RequestBody InviteUserDTO body) {
+        String code = this.userService.inviteUser(body);
+        return new InviteUserResponse("Utilisateur invité avec succès", code);
     }
 
     private UserResponse mapToUserResponse(User user) {

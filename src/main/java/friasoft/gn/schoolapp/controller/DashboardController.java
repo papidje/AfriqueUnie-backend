@@ -20,11 +20,12 @@ public class DashboardController {
     @GetMapping("/summary")
     public DashboardResponse getSummary(
         Authentication authentication,
+        @RequestParam(required = false) Long schoolId,
         @RequestParam(defaultValue = "false") boolean mock
     ) {
         if (mock) {
             return dashboardService.getMockSummary();
         }
-        return dashboardService.getSummary(authentication);
+        return dashboardService.getSummary(authentication, schoolId);
     }
 }

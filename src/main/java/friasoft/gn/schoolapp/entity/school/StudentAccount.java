@@ -1,6 +1,5 @@
 package friasoft.gn.schoolapp.entity.school;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import friasoft.gn.schoolapp.tenancy.TenantAware;
 import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
@@ -18,14 +17,14 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(
-    name = "class_timetable_slots",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"class_id", "day_of_week", "slot_index"})
+    name = "student_accounts",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "school_year_id"})
 )
 @Filter(
     name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
     condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
 )
-public class ClassTimetableSlot implements TenantAware {
+public class StudentAccount implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,22 +34,18 @@ public class ClassTimetableSlot implements TenantAware {
     private Long tenantId;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_id", nullable = false)
-    @JsonIgnoreProperties({"year", "level", "createdBy", "updatedBy"})
-    private SchoolClass schoolClass;
-
-    /** 1 = lundi … 5 = vendredi */
-    @Column(name = "day_of_week", nullable = false)
-    private Integer dayOfWeek;
-
-    /** 0 = 08:00–09:00 … 7 = 15:00–16:00 */
-    @Column(name = "slot_index", nullable = false)
-    private Integer slotIndex;
+    @JoinColumn(name = "student_id", nullable = false)
+    private Student student;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_subject_id", nullable = false)
-    @JsonIgnoreProperties({"schoolClass", "subject", "teacher", "hibernateLazyInitializer", "handler"})
-    private ClassSubject classSubject;
+    @JoinColumn(name = "school_year_id", nullable = false)
+    private SchoolYear schoolYear;
+
+    @Column(name = "currency", nullable = false, length = 10)
+    private String currency = "GNF";
+
+    @Column(name = "supplies_paid", nullable = false)
+    private Boolean suppliesPaid = false;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -58,3 +53,4 @@ public class ClassTimetableSlot implements TenantAware {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 }
+

@@ -53,7 +53,8 @@ public class RegistrationService {
         user.setRole(User.UserRole.ADMIN_ECOLE);
         user.setTenantId(tenant.getId());
         user.setSchool(school);
-        user.setPassword(passwordEncoder.encode(request.password()));
+        // Mot de passe initial technique: le vrai mot de passe est défini à l’activation.
+        user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
         user.setActive(false);
 
         User saved = userRepository.save(user);
@@ -71,9 +72,6 @@ public class RegistrationService {
     private void validateRequest(RegistrationRequest request) {
         if (request.email() == null || !request.email().contains("@")) {
             throw new RuntimeException("Email invalide");
-        }
-        if (request.password() == null || request.password().isBlank()) {
-            throw new RuntimeException("Mot de passe obligatoire");
         }
         if (request.tenantName() == null || request.tenantName().isBlank()) {
             throw new RuntimeException("Nom du tenant obligatoire");

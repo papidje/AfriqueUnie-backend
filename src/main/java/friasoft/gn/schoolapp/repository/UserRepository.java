@@ -47,4 +47,7 @@ public interface UserRepository extends JpaRepository<User, Long>{
         @Param("schoolId") Long schoolId,
         @Param("schoolTenantId") Long schoolTenantId
     );
+
+    @Query("select u.school.id from User u where u.id = :userId and u.school is not null")
+    Optional<Long> findAssignedSchoolIdByUserId(@Param("userId") Long userId);
 }

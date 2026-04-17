@@ -7,7 +7,6 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -51,8 +50,6 @@ public class ConfigurationSecurityApplication {
                 .authorizeHttpRequests(authorize -> authorize
                     // Auth endpoints
                     .requestMatchers("/auth/**").permitAll()
-                    // Inscription utilisateur (hors JWT)
-                    .requestMatchers(HttpMethod.POST, "/users/registery").permitAll()
                     // Super admin (context-path /api/rest en préfixe réel)
                     .requestMatchers("/super-admin/**").hasRole("SUPER_ADMIN")
                     .requestMatchers("/superadmin/**").hasRole("SUPER_ADMIN")

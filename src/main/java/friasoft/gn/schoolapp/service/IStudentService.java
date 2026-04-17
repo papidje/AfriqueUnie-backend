@@ -11,6 +11,7 @@ public interface IStudentService {
     Page<Student> findAll(Pageable pageable);
     Optional<Student> findById(Long id);
     List<Student> searchByLastName(String lastName);
+    List<Student> findByClass(Long classId);
     Student save(Student student);
     void delete(Long id);
 }

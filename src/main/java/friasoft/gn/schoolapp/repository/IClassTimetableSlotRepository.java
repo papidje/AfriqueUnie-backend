@@ -14,6 +14,7 @@ public interface IClassTimetableSlotRepository extends JpaRepository<ClassTimeta
         select t from ClassTimetableSlot t
         join fetch t.classSubject cs
         join fetch cs.subject s
+        left join fetch cs.teacher
         where t.schoolClass.id = :classId
         order by t.dayOfWeek asc, t.slotIndex asc
         """)

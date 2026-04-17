@@ -1,24 +1,12 @@
 ###
-// Register
-POST http://localhost:8080/api/rest/users/registery
-Content-Type: application/json
-
-{
-  "fullname": "Séré Moussa Doumbouya",
-  "email": "papidje@yopmail.com",
-  "password": "password",
-  "username": "papidje",
-  "rolesId": []
-}
-
-###
 // Activate
 POST http://localhost:8080/api/rest/auth/activate
 Content-Type: application/json
 
 {
-  "userMail":"papidje@yopmail.com",
-  "code":"806370"
+  "email":"papidje@yopmail.com",
+  "activationCode":"806370",
+  "newPassword":"password"
 }
 
 ###

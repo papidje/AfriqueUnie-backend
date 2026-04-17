@@ -13,8 +13,6 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -22,7 +20,7 @@ import java.util.List;
 @Entity
 @Table(name = "school_classes",
     uniqueConstraints = @UniqueConstraint(columnNames = {"year_id", "level_id", "name"}))
-@JsonIgnoreProperties({"enrollments", "fees"})
+@JsonIgnoreProperties({"createdBy", "updatedBy"})
 @Filter(
     name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
     condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
@@ -62,9 +60,4 @@ public class SchoolClass implements TenantAware {
     @JoinColumn(name = "updated_by")
     private User updatedBy;
 
-    @OneToMany(mappedBy = "classRef", cascade = CascadeType.ALL)
-    private List<Enrollment> enrollments = new ArrayList<>();
-
-    @OneToMany(mappedBy = "classRef", cascade = CascadeType.ALL)
-    private List<Fee> fees = new ArrayList<>();
 }

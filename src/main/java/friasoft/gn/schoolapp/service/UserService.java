@@ -1,12 +1,10 @@
 package friasoft.gn.schoolapp.service;
 
 import friasoft.gn.schoolapp.dto.ActivationRequest;
-import friasoft.gn.schoolapp.dto.UserRequest;
+import friasoft.gn.schoolapp.dto.InviteUserDTO;
 import friasoft.gn.schoolapp.entity.auth.Activation;
 import friasoft.gn.schoolapp.entity.auth.User;
-import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.IActivationRepository;
-import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
@@ -27,39 +26,9 @@ import java.util.*;
 public class UserService implements UserDetailsService{
 
     private UserRepository userRepository;
-    private SchoolRepository schoolRepository;
     private IActivationRepository iActivationRepository;
     private BCryptPasswordEncoder passwordEncoder;
     private NotificationService notificationService;
-
-    public void registery(UserRequest userInput) {
-        if (!userInput.email().contains("@")) {
-            throw new RuntimeException("Email invalide");
-        }
-        Optional<User> userOptional = this.userRepository.findByEmail(userInput.email());
-        if (userOptional.isPresent()) {
-            throw new RuntimeException("Email deja utilisé");
-        }
-
-
-        User user = new User();
-        user.setUsername(userInput.username());
-        user.setEmail(userInput.email());
-        user.setFullname(userInput.fullname());
-
-        if (userInput.schoolId() != null) {
-            School school = schoolRepository.findById(userInput.schoolId())
-                .orElseThrow(() -> new RuntimeException("Ecole inconnu"));
-            user.setSchool(school);
-            user.setTenantId(school.getId());
-        }
-        user.setRole(resolveRole(userInput));
-        user.setPassword(this.passwordEncoder.encode(userInput.password()));
-        user = this.userRepository.save(user);
-
-        Activation activation = createActivation(user);
-        this.notificationService.sendActivationMail(activation);
-    }
 
     public void sendActivationEmail(User user) {
         Activation activation = createActivation(user);
@@ -68,16 +37,81 @@ public class UserService implements UserDetailsService{
 
     @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'SUPER_ADMIN')")
     public List<User> getAll() {
-        List<User> actualList = new ArrayList<>();
-        this.userRepository.findAll().iterator().forEachRemaining(actualList::add);
-        return actualList;
+        User current = getUserInfo();
+        if (current == null) {
+            return List.of();
+        }
+        return this.userRepository.findAll().stream()
+            // Ne jamais exposer les comptes super admin dans la gestion tenant.
+            .filter(u -> u.getRole() != User.UserRole.SUPER_ADMIN)
+            .filter(u -> {
+                if (current.getRole() == User.UserRole.SUPER_ADMIN) {
+                    return true;
+                }
+                Long tenantId = current.getTenantId();
+                return tenantId != null && tenantId.equals(u.getTenantId());
+            })
+            .toList();
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN_ECOLE')")
+    public String inviteUser(InviteUserDTO request) {
+        User current = getUserInfo();
+        if (current == null || current.getTenantId() == null) {
+            throw new RuntimeException("Contexte établissement introuvable");
+        }
+        if (request.nom() == null || request.nom().isBlank()) {
+            throw new RuntimeException("Nom prénom obligatoire");
+        }
+        if (request.email() == null || !request.email().contains("@")) {
+            throw new RuntimeException("Email invalide");
+        }
+        User.UserRole role = request.role();
+        if (role == null) {
+            throw new RuntimeException("Rôle obligatoire");
+        }
+        if (role != User.UserRole.ADMIN_ECOLE && role != User.UserRole.STAFF && role != User.UserRole.TEACHER) {
+            throw new RuntimeException("Rôle non autorisé");
+        }
+        if (this.userRepository.findByEmail(request.email()).isPresent()) {
+            throw new RuntimeException("Email deja utilisé");
+        }
+
+        User user = new User();
+        user.setUsername(request.email());
+        user.setFullname(request.nom().trim());
+        user.setEmail(request.email().trim().toLowerCase());
+        user.setRole(role);
+        user.setTenantId(current.getTenantId());
+        user.setSchool(null);
+        user.setPassword(this.passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setActive(false);
+        user = this.userRepository.save(user);
+
+        Activation activation = createActivation(user);
+        String activationCode = activation.getCode();
+        log.info("Activation code for invited user {}: {}", user.getEmail(), activationCode);
+        return activationCode;
     }
 
     public void activate(ActivationRequest activation) {
-        Activation savedActivation = this.iActivationRepository.findByCode(activation.code())
+        if (activation.email() == null || activation.email().isBlank()) {
+            throw new RuntimeException("Email obligatoire");
+        }
+        if (activation.activationCode() == null || activation.activationCode().isBlank()) {
+            throw new RuntimeException("Code d'activation obligatoire");
+        }
+        if (activation.newPassword() == null || activation.newPassword().isBlank()) {
+            throw new RuntimeException("Nouveau mot de passe obligatoire");
+        }
+
+        Activation savedActivation = this.iActivationRepository.findByCode(activation.activationCode())
             .orElseThrow(() -> new RuntimeException("Activation code invalide"));
-        User user = this.userRepository.findByEmail(activation.userMail()).orElseThrow();
+        User user = this.userRepository.findByEmail(activation.email())
+            .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         if(Instant.now().isBefore(savedActivation.getExpiration()) && savedActivation.getUser().getEmail().equals(user.getEmail())) {
+            user.setPassword(this.passwordEncoder.encode(activation.newPassword()));
             user.setActive(true);
             this.userRepository.save(user);
             this.iActivationRepository.delete(savedActivation);
@@ -141,10 +175,4 @@ public class UserService implements UserDetailsService{
         return this.userRepository.searchByKeywordAndNoSchool(term);
     }
 
-    private User.UserRole resolveRole(UserRequest userInput) {
-        if (userInput.role() != null) {
-            return userInput.role();
-        }
-        return userInput.schoolId() != null ? User.UserRole.ADMIN_ECOLE : User.UserRole.STAFF;
-    }
 }

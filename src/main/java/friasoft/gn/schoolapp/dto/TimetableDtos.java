@@ -13,7 +13,8 @@ public final class TimetableDtos {
         int slotIndex,
         Long classSubjectId,
         String subjectCode,
-        String subjectName
+        String subjectName,
+        String teacherFullname
     ) {
     }
 

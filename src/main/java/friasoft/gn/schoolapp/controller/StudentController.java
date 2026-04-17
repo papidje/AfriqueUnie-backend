@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/students")
 @RequiredArgsConstructor
@@ -33,6 +35,19 @@ public class StudentController {
             .map(mapper::toDto)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @GetMapping("/by-class/{classId}")
+    public List<StudentResponse> getByClass(@PathVariable Long classId) {
+        try {
+            return service.findByClass(classId).stream().map(mapper::toDto).toList();
+        } catch (IllegalArgumentException e) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND,
+                e.getMessage()
+            );
+        }
     }
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE')")

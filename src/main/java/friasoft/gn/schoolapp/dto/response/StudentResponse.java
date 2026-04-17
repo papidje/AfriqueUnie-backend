@@ -17,4 +17,5 @@ public class StudentResponse {
     private String firstName;
     private String lastName;
     private LocalDate birthDate;
+    private String matricule;
 }

@@ -15,7 +15,10 @@ public class StudentMapper {
         studentResponse.setFirstName(student.getFirstName());
         studentResponse.setLastName(student.getLastName());
         studentResponse.setBirthDate(student.getBirthDate());
-        studentResponse.setCivility(student.getCivility().name());
+        if (student.getCivility() != null) {
+            studentResponse.setCivility(student.getCivility().name());
+        }
+        studentResponse.setMatricule(student.getMatricule());
         return studentResponse;
     }
 
@@ -25,6 +28,9 @@ public class StudentMapper {
         student.setFirstName(dto.getFirstName());
         student.setLastName(dto.getLastName());
         student.setBirthDate(dto.getBirthDate());
+        if (dto.getCivility() != null && !dto.getCivility().isBlank()) {
+            student.setCivility(Student.Civility.valueOf(dto.getCivility().trim().toUpperCase()));
+        }
         return student;
     }
 

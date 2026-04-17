@@ -4,7 +4,6 @@ public record RegistrationRequest(
     String username,
     String fullname,
     String email,
-    String password,
     String tenantName,
     String schoolName,
     String tenantAddress,

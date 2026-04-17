@@ -84,13 +84,15 @@ public class ClassTimetableService {
     private TimetableSlotDto toDto(ClassTimetableSlot t) {
         var cs = t.getClassSubject();
         var s = cs.getSubject();
+        var teacher = cs.getTeacher();
         return new TimetableSlotDto(
             t.getId(),
             t.getDayOfWeek(),
             t.getSlotIndex(),
             cs.getId(),
             s.getCode(),
-            s.getName()
+            s.getName(),
+            teacher != null ? teacher.getFullname() : null
         );
     }
 }

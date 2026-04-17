@@ -100,6 +100,9 @@ public class JwtService {
         claims.put(Claims.SUBJECT, user.getEmail());
         claims.put("roles", user.getAuthorities());
         claims.put("lastLoginAt", Date.from(user.getLastLoginAt()));
+        if (user.getSchool() != null && user.getSchool().getId() != null) {
+            claims.put("school_id", user.getSchool().getId());
+        }
         if (user.getRole() != User.UserRole.SUPER_ADMIN) {
             String headerTitle = resolveHeaderTitle(user);
             if (headerTitle != null && !headerTitle.isBlank()) {

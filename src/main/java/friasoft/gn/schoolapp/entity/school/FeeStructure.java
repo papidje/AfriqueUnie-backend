@@ -1,7 +1,5 @@
 package friasoft.gn.schoolapp.entity.school;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.tenancy.TenantAware;
 import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
@@ -19,14 +17,14 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(
-    name = "class_subjects",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"class_id", "subject_id"})
+    name = "fee_structures",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"class_level_id", "school_year_id"})
 )
 @Filter(
     name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
     condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
 )
-public class ClassSubject implements TenantAware {
+public class FeeStructure implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,22 +34,30 @@ public class ClassSubject implements TenantAware {
     private Long tenantId;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_id", nullable = false)
-    @JsonIgnoreProperties({"year", "level", "createdBy", "updatedBy"})
-    private SchoolClass schoolClass;
+    @JoinColumn(name = "class_level_id", nullable = false)
+    private ClassLevel classLevel;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "subject_id", nullable = false)
-    private Subject subject;
+    @JoinColumn(name = "school_year_id", nullable = false)
+    private SchoolYear schoolYear;
 
-    @Column(nullable = false)
-    private Integer coefficient = 1;
+    @Column(name = "registration_fee", nullable = false)
+    private Double registrationFee = 0d;
 
-    /** Professeur titulaire de la matière pour cette classe (rôle {@link User.UserRole#TEACHER}). */
-    @ManyToOne(optional = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "teacher_id")
-    @JsonIgnoreProperties({"password", "school", "hibernateLazyInitializer", "handler"})
-    private User teacher;
+    @Column(name = "re_registration_fee", nullable = false)
+    private Double reRegistrationFee = 0d;
+
+    @Column(name = "monthly_tuition_fee", nullable = false)
+    private Double monthlyTuitionFee = 0d;
+
+    @Column(name = "supplies_fee", nullable = false)
+    private Double suppliesFee = 0d;
+
+    @Column(name = "supplies_column_enabled", nullable = false)
+    private Boolean suppliesColumnEnabled = false;
+
+    @Column(name = "currency", nullable = false, length = 10)
+    private String currency = "GNF";
 
     @CreationTimestamp
     private LocalDateTime createdAt;

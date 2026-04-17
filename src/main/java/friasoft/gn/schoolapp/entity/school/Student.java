@@ -1,18 +1,18 @@
 package friasoft.gn.schoolapp.entity.school;
 
 import friasoft.gn.schoolapp.entity.auth.User;
-import friasoft.gn.schoolapp.enums.CivilityEnum;
+import friasoft.gn.schoolapp.tenancy.TenantAware;
+import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 @Data
@@ -20,11 +20,18 @@ import java.util.Random;
 @AllArgsConstructor
 @Entity
 @Table(name = "students")
-public class Student {
+@Filter(
+    name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
+    condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
+)
+public class Student implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "tenant_id")
+    private Long tenantId;
 
     @Column(length = 20)
     @Enumerated(EnumType.STRING)
@@ -36,9 +43,27 @@ public class Student {
     @Column(nullable = false, length = 100)
     private String lastName;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "father_id")
+    private Parent father;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "mother_id")
+    private Parent mother;
+
     private LocalDate birthDate;
 
     private String matricule;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "school_class_id")
+    private SchoolClass schoolClass;
+
+    @Column(length = 150)
+    private String emergencyContactName;
+
+    @Column(length = 40)
+    private String emergencyContactPhone;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -53,9 +78,6 @@ public class Student {
     @ManyToOne
     @JoinColumn(name = "updated_by")
     private User updatedBy;
-
-    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL)
-    private List<Enrollment> enrollments = new ArrayList<>();
 
     public enum Civility {
         MONSIEUR, MADAME

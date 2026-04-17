@@ -1,65 +1,75 @@
 package friasoft.gn.schoolapp.entity.school;
 
-import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.tenancy.TenantAware;
+import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "payments",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"enrollment_id", "fee_id"}))
-public class Payment {
+@Table(
+    name = "student_payments",
+    indexes = {
+        @Index(name = "idx_student_payments_account_id", columnList = "student_account_id")
+    }
+)
+@Filter(
+    name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
+    condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
+)
+public class Payment implements TenantAware {
+
+    public enum PaymentType {
+        INSCRIPTION,
+        REINSCRIPTION,
+        SCOLARITE
+    }
+
+    public enum PaymentMode {
+        ESPECES,
+        ORANGE_MONEY,
+        MOOV_MONEY,
+        VIREMENT
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "enrollment_id", nullable = false)
-    private Enrollment enrollment;
+    @Column(name = "tenant_id")
+    private Long tenantId;
 
-    @ManyToOne
-    @JoinColumn(name = "fee_id", nullable = false)
-    private Fee fee;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_account_id", nullable = false)
+    private StudentAccount studentAccount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_type", nullable = false, length = 30)
+    private PaymentType paymentType;
 
     @Column(nullable = false)
-    private BigDecimal paidAmount;
+    private Double amount;
+
+    @Column(name = "currency", nullable = false, length = 10)
+    private String currency = "GNF";
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_mode", length = 30)
+    private PaymentMode paymentMode;
 
     @CreationTimestamp
     private LocalDateTime paymentDate;
 
-    @Column(length = 50)
-    private String paymentMethod;
-
-    @Column(length = 20)
-    @Enumerated(EnumType.STRING)
-    private Status status = Status.PAID;
-
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-
-    @ManyToOne
-    @JoinColumn(name = "created_by")
-    private User createdBy;
-
-    @ManyToOne
-    @JoinColumn(name = "updated_by")
-    private User updatedBy;
-
-    public enum Status {
-        PAID, PARTIAL, PENDING
-    }
 }
 
