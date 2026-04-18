@@ -13,7 +13,9 @@ public record StudentPaymentInfoDTO(
     Double insReinsPaid,
     Double insReinsRemaining,
     boolean suppliesPaid,
+    /** Montant attendu (0 si la colonne fournitures est désactivée dans la structure de frais). */
     Double suppliesExpected,
+    boolean suppliesColumnEnabled,
     List<MonthlyTuitionStatusDTO> monthlyTuition
 ) {
     public record MonthlyTuitionStatusDTO(

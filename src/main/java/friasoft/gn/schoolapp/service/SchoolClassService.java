@@ -50,10 +50,16 @@ public class SchoolClassService {
     }
 
     public Optional<SchoolClass> findById(Long id) {
-        return repository.findById(id);
+        return repository.findByIdWithYearAndSchool(id).map(sc -> {
+            schoolService.assertCurrentUserCanAccessSchool(sc.getYear().getSchool().getId());
+            return sc;
+        });
     }
 
     public List<SchoolClass> findByYear(Long yearId) {
+        SchoolYear year = schoolYearRepository.findByIdWithSchool(yearId)
+            .orElseThrow(() -> new IllegalArgumentException("Année scolaire introuvable."));
+        schoolService.assertCurrentUserCanAccessSchool(year.getSchool().getId());
         return repository.findByYear_Id(yearId);
     }
 

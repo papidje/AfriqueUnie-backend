@@ -15,18 +15,31 @@ public class SchoolSecurity {
 
     public boolean checkUserSchool(Authentication auth, Long schoolId) {
         User user = (User) auth.getPrincipal();
-        if (user.getRole() == User.UserRole.SUPER_ADMIN) {
-            return true;
-        }
         return schoolRepository.findById(schoolId)
-            .map(s -> schoolAccessibleByUser(user, s))
+            .map(s -> canAccessSchool(user, s))
             .orElse(false);
     }
 
-    private static boolean schoolAccessibleByUser(User user, School school) {
-        if (user.getTenantId() != null && user.getTenantId().equals(school.getTenantId())) {
+    /**
+     * ADMIN_ECOLE : tout établissement du même tenant (seul profil « multi-écoles » côté accès).
+     * DIRECTOR / STAFF / TEACHER / ACCOUNTANT : uniquement {@link User#getSchool()} lorsqu’il est renseigné.
+     */
+    public boolean canAccessSchool(User user, School school) {
+        if (user.getRole() == User.UserRole.SUPER_ADMIN) {
             return true;
         }
-        return user.getSchool() != null && user.getSchool().getId().equals(school.getId());
+        if (user.getRole() == User.UserRole.DIRECTOR) {
+            return user.getSchool() != null && user.getSchool().getId().equals(school.getId());
+        }
+        if (user.getRole() == User.UserRole.ADMIN_ECOLE) {
+            Long orgTid = user.getOrganizationTenantId();
+            return orgTid != null && orgTid.equals(school.getTenantId());
+        }
+        if (user.getRole() == User.UserRole.STAFF
+            || user.getRole() == User.UserRole.TEACHER
+            || user.getRole() == User.UserRole.ACCOUNTANT) {
+            return user.getSchool() != null && user.getSchool().getId().equals(school.getId());
+        }
+        return false;
     }
 }

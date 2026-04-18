@@ -25,7 +25,7 @@ public class FinanceController {
 
     private final FinanceService financeService;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping("/status/{classId}")
     public List<StudentPaymentStatusDTO> getStatusByClass(@PathVariable Long classId) {
         try {
@@ -35,7 +35,7 @@ public class FinanceController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping("/payment-info/{studentId}")
     public StudentPaymentInfoDTO getPaymentInfo(@PathVariable Long studentId) {
         try {
@@ -45,7 +45,7 @@ public class FinanceController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @PostMapping("/payments/{studentId}")
     public CreatePaymentResponse createPayment(@PathVariable Long studentId, @RequestBody CreatePaymentRequest request) {
         try {

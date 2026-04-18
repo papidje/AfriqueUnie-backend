@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DashboardController {
     private final DashboardService dashboardService;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','TEACHER','DIRECTOR','ACCOUNTANT')")
     @GetMapping("/summary")
     public DashboardResponse getSummary(
         Authentication authentication,

@@ -37,8 +37,10 @@ public class User implements UserDetails, TenantAware {
     public enum UserRole {
         SUPER_ADMIN,
         ADMIN_ECOLE,
+        DIRECTOR,
         STAFF,
-        TEACHER
+        TEACHER,
+        ACCOUNTANT
     }
 
     @Id
@@ -63,9 +65,13 @@ public class User implements UserDetails, TenantAware {
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
+    /**
+     * Établissement de rattachement (directeur, staff, enseignant, comptable). Absent pour le compte tenant ({@link UserRole#ADMIN_ECOLE}) et super admin.
+     */
     @JoinColumn(name = "school_id")
     @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.DETACH})
     private School school;
+
     private Instant lastLoginAt = Instant.now();
 
     private String username;
@@ -105,13 +111,21 @@ public class User implements UserDetails, TenantAware {
         return this.isActive;
     }
 
+    /** Valeur brute {@code tenant_id} en base (organisation), sans logique de repli. */
+    public Long getOrganizationTenantId() {
+        return this.tenantId;
+    }
+
     @Override
     @Transient
     public Long getTenantId() {
         if (this.tenantId != null) {
             return this.tenantId;
         }
-        return this.school != null ? this.school.getId() : null;
+        if (this.school != null && this.school.getTenantId() != null) {
+            return this.school.getTenantId();
+        }
+        return null;
     }
 
     @Override
@@ -119,7 +133,7 @@ public class User implements UserDetails, TenantAware {
         this.tenantId = tenantId;
         if (tenantId == null) {
             this.school = null;
-            return;
         }
     }
 }
+

@@ -78,6 +78,10 @@ public class DashboardService {
      * Détermine l’établissement pour les indicateurs (pas l’agrégat tenant entier).
      */
     private long resolveDashboardSchoolId(User user, Long requestedSchoolId) {
+        final boolean singleSchoolProfile = user.getRole() == User.UserRole.STAFF
+            || user.getRole() == User.UserRole.TEACHER
+            || user.getRole() == User.UserRole.ACCOUNTANT;
+
         if (user.getRole() == User.UserRole.SUPER_ADMIN) {
             if (requestedSchoolId == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paramètre schoolId obligatoire.");
@@ -85,18 +89,36 @@ public class DashboardService {
             return requestedSchoolId;
         }
         if (requestedSchoolId != null) {
-            Long assigned = userRepository.findAssignedSchoolIdByUserId(user.getId()).orElse(null);
-            if (assigned != null && !assigned.equals(requestedSchoolId)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Établissement non autorisé pour ce compte.");
+            if (user.getRole() == User.UserRole.DIRECTOR) {
+                Long directorSchool = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);
+                if (directorSchool != null && !directorSchool.equals(requestedSchoolId)) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Établissement non autorisé pour ce compte.");
+                }
+            }
+            // ADMIN_ECOLE peut avoir un school_id (ex. école créée à l’inscription) tout en parcourant tout le tenant :
+            // ne pas confondre avec STAFF / TEACHER / ACCOUNTANT, liés à une seule école.
+            if (singleSchoolProfile) {
+                Long staffSchool = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);
+                if (staffSchool != null && !staffSchool.equals(requestedSchoolId)) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Établissement non autorisé pour ce compte.");
+                }
             }
             return requestedSchoolId;
         }
-        Long staffSchoolId = userRepository.findAssignedSchoolIdByUserId(user.getId()).orElse(null);
-        if (staffSchoolId != null) {
-            return staffSchoolId;
+        if (user.getRole() == User.UserRole.DIRECTOR) {
+            Long directorSchoolId = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);
+            if (directorSchoolId != null) {
+                return directorSchoolId;
+            }
         }
-        if (user.getRole() == User.UserRole.ADMIN_ECOLE && user.getTenantId() != null) {
-            List<School> schools = schoolRepository.findByTenantIdOrderByIdAsc(user.getTenantId());
+        if (singleSchoolProfile) {
+            Long staffSchoolId = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);
+            if (staffSchoolId != null) {
+                return staffSchoolId;
+            }
+        }
+        if (user.getRole() == User.UserRole.ADMIN_ECOLE && user.getOrganizationTenantId() != null) {
+            List<School> schools = schoolRepository.findByTenantIdOrderByIdAsc(user.getOrganizationTenantId());
             if (schools.size() == 1) {
                 return schools.get(0).getId();
             }

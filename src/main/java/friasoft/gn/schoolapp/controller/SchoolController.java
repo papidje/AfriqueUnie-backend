@@ -6,6 +6,7 @@ import friasoft.gn.schoolapp.service.SchoolService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,14 +20,15 @@ import java.util.List;
 public class SchoolController {
     private final SchoolService schoolService;
 
-    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
     @PostMapping
-    public void create(@RequestBody School school) {
-        log.info("creation");
-        this.schoolService.create(school);
+    public ResponseEntity<School> create(@RequestBody School school) {
+        log.info("creation école");
+        School saved = this.schoolService.create(school);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE', 'DIRECTOR', 'STAFF', 'TEACHER', 'ACCOUNTANT')")
     @GetMapping
     public List<School> getSchools() {
         return this.schoolService.listForAuthenticatedUser();
@@ -38,13 +40,13 @@ public class SchoolController {
         return schoolService.update(schoolId, dto);
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
     @DeleteMapping("/{schoolId}")
     public void deleteSchool(@PathVariable Long schoolId) {
         schoolService.delete(schoolId);
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
     @PatchMapping("/{schoolId}/active/{active}")
     public void activateSchool(@PathVariable Long schoolId, @PathVariable boolean active) {
         schoolService.activate(schoolId, active);

@@ -1,6 +1,8 @@
 package friasoft.gn.schoolapp.repository;
 
 import friasoft.gn.schoolapp.entity.school.Student;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -45,4 +47,20 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         @Param("schoolId") Long schoolId,
         org.springframework.data.domain.Pageable pageable
     );
+
+    @Query(
+        value = """
+            select s from Student s
+            join s.schoolClass sc
+            join sc.year y
+            where y.school.id = :schoolId
+            """,
+        countQuery = """
+            select count(s) from Student s
+            join s.schoolClass sc
+            join sc.year y
+            where y.school.id = :schoolId
+            """
+    )
+    Page<Student> findAllBySchoolId(@Param("schoolId") Long schoolId, Pageable pageable);
 }

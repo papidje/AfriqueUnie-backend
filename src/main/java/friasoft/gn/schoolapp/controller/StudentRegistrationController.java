@@ -19,7 +19,7 @@ public class StudentRegistrationController {
     private final StudentRegistrationService registrationService;
     private final StudentMapper studentMapper;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PostMapping
     public ResponseEntity<StudentResponse> register(@RequestBody RegistrationDTO dto) {
         try {

@@ -1,6 +1,7 @@
 package friasoft.gn.schoolapp.entity.school;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.tenancy.TenantAware;
 import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
@@ -39,6 +40,7 @@ public class SchoolYear implements TenantAware {
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "school_id", nullable = false)
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private School school;
 
     @Column(nullable = false, length = 20)
@@ -59,12 +61,15 @@ public class SchoolYear implements TenantAware {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    /** Non exposé en JSON : références Hibernate {@code getReferenceById} → proxies non sérialisables. */
     @ManyToOne
     @JoinColumn(name = "created_by")
+    @JsonIgnore
     private User createdBy;
 
     @ManyToOne
     @JoinColumn(name = "updated_by")
+    @JsonIgnore
     private User updatedBy;
 
     @OneToMany(mappedBy = "year", cascade = CascadeType.ALL)

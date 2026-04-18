@@ -130,7 +130,10 @@ public class StudentRegistrationService {
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
             throw new IllegalStateException("Contexte utilisateur introuvable.");
         }
-        Long tenantId = user.getTenantId();
+        Long tenantId = user.getOrganizationTenantId();
+        if (tenantId == null) {
+            tenantId = user.getTenantId();
+        }
         if (tenantId == null) {
             throw new IllegalStateException("tenantId manquant dans le contexte.");
         }

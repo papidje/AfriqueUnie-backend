@@ -4,6 +4,7 @@ import friasoft.gn.schoolapp.dto.InviteUserDTO;
 import friasoft.gn.schoolapp.dto.InviteUserResponse;
 import friasoft.gn.schoolapp.dto.UserResponse;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.service.SchoolService;
 import friasoft.gn.schoolapp.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.util.List;
 @RequestMapping("users")
 public class UserController {
     private UserService userService;
+    private SchoolService schoolService;
 
     @GetMapping()
     public List<UserResponse> getAll() {
@@ -36,6 +38,7 @@ public class UserController {
 
     @GetMapping("/admins-by-school/{schoolId}")
     public List<UserResponse> getAdminsBySchool(@PathVariable Long schoolId) {
+        this.schoolService.assertCurrentUserCanAccessSchool(schoolId);
         return this
             .userService.getAdminBySchool(schoolId)
             .stream()

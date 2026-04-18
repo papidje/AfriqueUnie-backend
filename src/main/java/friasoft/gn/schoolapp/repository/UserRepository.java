@@ -11,6 +11,13 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long>{
 
     Optional<User> findByEmail(String email);
+
+    @Query("""
+        SELECT u FROM User u
+        LEFT JOIN FETCH u.school
+        WHERE u.email = :email
+        """)
+    Optional<User> findByEmailWithSchoolScopes(@Param("email") String email);
     List<User> findAllBySchoolId(Long schoolId);
     @Query("""
         SELECT u FROM User u
@@ -48,6 +55,7 @@ public interface UserRepository extends JpaRepository<User, Long>{
         @Param("schoolTenantId") Long schoolTenantId
     );
 
+    /** {@code school_id} : directeur, staff, enseignant, comptable ; absent pour admin organisation / super admin. */
     @Query("select u.school.id from User u where u.id = :userId and u.school is not null")
-    Optional<Long> findAssignedSchoolIdByUserId(@Param("userId") Long userId);
+    Optional<Long> findSchoolIdByUserId(@Param("userId") Long userId);
 }

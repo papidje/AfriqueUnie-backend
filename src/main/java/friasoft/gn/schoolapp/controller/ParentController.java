@@ -18,7 +18,7 @@ public class ParentController {
 
     private final ParentService parentService;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/by-phone")
     public ResponseEntity<ParentResponse> findByPhone(@RequestParam String phone) {
         try {
@@ -31,7 +31,7 @@ public class ParentController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PostMapping
     public ResponseEntity<ParentResponse> create(@RequestBody ParentWriteRequest body) {
         try {

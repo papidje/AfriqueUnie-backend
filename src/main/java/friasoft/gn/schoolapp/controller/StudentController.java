@@ -22,13 +22,13 @@ public class StudentController {
     private final IStudentService service;
     private final StudentMapper mapper;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping
     public Page<StudentResponse> getAll(Pageable pageable) {
         return service.findAll(pageable).map(mapper::toDto);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping("/{id}")
     public ResponseEntity<StudentResponse> getById(@PathVariable Long id) {
         return service.findById(id)
@@ -37,7 +37,7 @@ public class StudentController {
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping("/by-class/{classId}")
     public List<StudentResponse> getByClass(@PathVariable Long classId) {
         try {

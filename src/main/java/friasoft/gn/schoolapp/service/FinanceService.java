@@ -122,6 +122,9 @@ public class FinanceService {
         double tuitionPaid = sums.get(Payment.PaymentType.SCOLARITE);
         List<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO> monthlyStatuses = buildMonthlyTuitionStatuses(monthlyFee, tuitionPaid);
 
+        boolean suppliesColumnEnabled = Boolean.TRUE.equals(feeStructure.getSuppliesColumnEnabled());
+        double suppliesExpected = suppliesColumnEnabled ? nvl(feeStructure.getSuppliesFee()) : 0d;
+
         return new StudentPaymentInfoDTO(
             student.getId(),
             schoolClass.getId(),
@@ -132,7 +135,8 @@ public class FinanceService {
             insReinsPaid,
             insReinsRemaining,
             Boolean.TRUE.equals(account.getSuppliesPaid()),
-            nvl(feeStructure.getSuppliesFee()),
+            suppliesExpected,
+            suppliesColumnEnabled,
             monthlyStatuses
         );
     }
@@ -196,7 +200,7 @@ public class FinanceService {
                 }
             }
 
-            if (Boolean.TRUE.equals(request.paySupplies())) {
+            if (Boolean.TRUE.equals(request.paySupplies()) && info.suppliesColumnEnabled()) {
                 account.setSuppliesPaid(true);
                 studentAccountRepository.save(account);
             }
@@ -245,7 +249,7 @@ public class FinanceService {
     /** Reliquat théorique aligné sur l’écran d’encaissement (inscription + fournitures si impayées + mensualités ouvertes). */
     private double computeOpenBalanceTotal(StudentPaymentInfoDTO info) {
         double open = Math.max(0d, nvl(info.insReinsRemaining()));
-        if (!info.suppliesPaid()) {
+        if (info.suppliesColumnEnabled() && !info.suppliesPaid()) {
             open += Math.max(0d, nvl(info.suppliesExpected()));
         }
         for (StudentPaymentInfoDTO.MonthlyTuitionStatusDTO m : info.monthlyTuition()) {
@@ -264,7 +268,7 @@ public class FinanceService {
             double insRem = Math.max(0d, nvl(info.insReinsRemaining()));
             planned += Math.min(clampAmount(request.insReinsAmount()), insRem);
         }
-        if (Boolean.TRUE.equals(request.paySupplies()) && !info.suppliesPaid()) {
+        if (Boolean.TRUE.equals(request.paySupplies()) && info.suppliesColumnEnabled() && !info.suppliesPaid()) {
             planned += Math.max(0d, nvl(info.suppliesExpected()));
         }
         if (request.months() != null) {
@@ -322,7 +326,7 @@ public class FinanceService {
             R -= pay;
         }
 
-        if (!info.suppliesPaid()) {
+        if (info.suppliesColumnEnabled() && !info.suppliesPaid()) {
             double sup = Math.max(0d, nvl(info.suppliesExpected()));
             if (sup > 0d && R >= sup) {
                 account.setSuppliesPaid(true);

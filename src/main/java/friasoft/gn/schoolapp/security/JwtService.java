@@ -95,13 +95,24 @@ public class JwtService {
         claims.put("name", user.getFullname());
         claims.put("email", user.getEmail());
         claims.put("username", user.getUsername());
-        claims.put("tenant_id", user.getTenantId());
+        Long tenantClaim = user.getOrganizationTenantId();
+        if (tenantClaim == null) {
+            tenantClaim = user.getTenantId();
+        }
+        claims.put("tenant_id", tenantClaim);
         claims.put(Claims.EXPIRATION, new Date(expirationTime));
         claims.put(Claims.SUBJECT, user.getEmail());
         claims.put("roles", user.getAuthorities());
         claims.put("lastLoginAt", Date.from(user.getLastLoginAt()));
-        if (user.getSchool() != null && user.getSchool().getId() != null) {
-            claims.put("school_id", user.getSchool().getId());
+        // Pas de school_id pour ADMIN_ECOLE : le compte couvre tout le tenant, l’établissement actif est choisi en session (UI).
+        Long schoolScopeId = null;
+        if (user.getRole() != User.UserRole.ADMIN_ECOLE
+            && user.getSchool() != null
+            && user.getSchool().getId() != null) {
+            schoolScopeId = user.getSchool().getId();
+        }
+        if (schoolScopeId != null) {
+            claims.put("school_id", schoolScopeId);
         }
         if (user.getRole() != User.UserRole.SUPER_ADMIN) {
             String headerTitle = resolveHeaderTitle(user);
@@ -121,7 +132,7 @@ public class JwtService {
 
     private String resolveHeaderTitle(User user) {
         if (user.getRole() == User.UserRole.ADMIN_ECOLE) {
-            Long tenantId = user.getTenantId();
+            Long tenantId = user.getOrganizationTenantId();
             if (tenantId == null) {
                 return null;
             }
@@ -130,7 +141,10 @@ public class JwtService {
                 .filter(n -> n != null && !n.isBlank())
                 .orElse(null);
         }
-        if (user.getRole() == User.UserRole.STAFF || user.getRole() == User.UserRole.TEACHER) {
+        if (user.getRole() == User.UserRole.DIRECTOR
+            || user.getRole() == User.UserRole.STAFF
+            || user.getRole() == User.UserRole.TEACHER
+            || user.getRole() == User.UserRole.ACCOUNTANT) {
             School school = user.getSchool();
             if (school == null) {
                 return null;

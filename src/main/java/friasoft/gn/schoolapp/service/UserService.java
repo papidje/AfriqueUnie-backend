@@ -4,6 +4,7 @@ import friasoft.gn.schoolapp.dto.ActivationRequest;
 import friasoft.gn.schoolapp.dto.InviteUserDTO;
 import friasoft.gn.schoolapp.entity.auth.Activation;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.IActivationRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
 import lombok.AllArgsConstructor;
@@ -29,17 +30,31 @@ public class UserService implements UserDetailsService{
     private IActivationRepository iActivationRepository;
     private BCryptPasswordEncoder passwordEncoder;
     private NotificationService notificationService;
+    private final SchoolService schoolService;
 
     public void sendActivationEmail(User user) {
         Activation activation = createActivation(user);
         this.notificationService.sendActivationMail(activation);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'SUPER_ADMIN')")
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'SUPER_ADMIN', 'DIRECTOR')")
     public List<User> getAll() {
         User current = getUserInfo();
         if (current == null) {
             return List.of();
+        }
+        if (current.getRole() == User.UserRole.DIRECTOR) {
+            School dirSchool = current.getSchool();
+            if (dirSchool == null || dirSchool.getId() == null) {
+                return List.of();
+            }
+            Long dirSchoolId = dirSchool.getId();
+            return this.userRepository.findAll().stream()
+                .filter(u -> u.getRole() != User.UserRole.SUPER_ADMIN)
+                .filter(u -> u.getRole() == User.UserRole.TEACHER || u.getRole() == User.UserRole.ACCOUNTANT)
+                .filter(u -> u.getSchool() != null && dirSchoolId.equals(u.getSchool().getId()))
+                .toList();
         }
         return this.userRepository.findAll().stream()
             // Ne jamais exposer les comptes super admin dans la gestion tenant.
@@ -48,19 +63,23 @@ public class UserService implements UserDetailsService{
                 if (current.getRole() == User.UserRole.SUPER_ADMIN) {
                     return true;
                 }
-                Long tenantId = current.getTenantId();
-                return tenantId != null && tenantId.equals(u.getTenantId());
+                Long tenantId = current.getOrganizationTenantId() != null
+                    ? current.getOrganizationTenantId()
+                    : current.getTenantId();
+                Long uTenant = u.getOrganizationTenantId() != null ? u.getOrganizationTenantId() : u.getTenantId();
+                return tenantId != null && tenantId.equals(uTenant);
             })
             .toList();
     }
 
     @Transactional
-    @PreAuthorize("hasRole('ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     public String inviteUser(InviteUserDTO request) {
         User current = getUserInfo();
-        if (current == null || current.getTenantId() == null) {
-            throw new RuntimeException("Contexte établissement introuvable");
+        if (current == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
         }
+        User.UserRole currentRole = current.getRole();
         if (request.nom() == null || request.nom().isBlank()) {
             throw new RuntimeException("Nom prénom obligatoire");
         }
@@ -71,9 +90,6 @@ public class UserService implements UserDetailsService{
         if (role == null) {
             throw new RuntimeException("Rôle obligatoire");
         }
-        if (role != User.UserRole.ADMIN_ECOLE && role != User.UserRole.STAFF && role != User.UserRole.TEACHER) {
-            throw new RuntimeException("Rôle non autorisé");
-        }
         if (this.userRepository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("Email deja utilisé");
         }
@@ -83,8 +99,56 @@ public class UserService implements UserDetailsService{
         user.setFullname(request.nom().trim());
         user.setEmail(request.email().trim().toLowerCase());
         user.setRole(role);
-        user.setTenantId(current.getTenantId());
-        user.setSchool(null);
+
+        if (currentRole == User.UserRole.DIRECTOR) {
+            if (role != User.UserRole.TEACHER && role != User.UserRole.ACCOUNTANT) {
+                throw new RuntimeException("Rôle non autorisé pour un directeur");
+            }
+            School dirSchool = current.getSchool();
+            if (dirSchool == null || dirSchool.getId() == null) {
+                throw new RuntimeException("École du directeur introuvable");
+            }
+            schoolService.assertCurrentUserCanAccessSchool(dirSchool.getId());
+            user.setSchool(dirSchool);
+            user.setTenantId(dirSchool.getTenantId());
+        } else if (currentRole == User.UserRole.ADMIN_ECOLE) {
+            Long orgTenant = current.getOrganizationTenantId();
+            if (orgTenant == null && current.getTenantId() == null) {
+                throw new RuntimeException("Contexte établissement introuvable");
+            }
+            if (role != User.UserRole.ADMIN_ECOLE
+                && role != User.UserRole.STAFF
+                && role != User.UserRole.TEACHER
+                && role != User.UserRole.DIRECTOR) {
+                throw new RuntimeException("Rôle non autorisé");
+            }
+            if (role == User.UserRole.ADMIN_ECOLE) {
+                if (request.schoolId() != null) {
+                    throw new RuntimeException("schoolId ne doit pas être fourni pour un ADMIN_ECOLE");
+                }
+                user.setSchool(null);
+                user.setTenantId(orgTenant != null ? orgTenant : current.getTenantId());
+            } else if (role == User.UserRole.DIRECTOR) {
+                if (request.schoolId() == null) {
+                    throw new RuntimeException("schoolId obligatoire pour un directeur");
+                }
+                schoolService.assertCurrentUserCanAccessSchool(request.schoolId());
+                School linked = schoolService.getSchool(request.schoolId());
+                user.setSchool(linked);
+                user.setTenantId(linked.getTenantId());
+            } else {
+                if (request.schoolId() == null) {
+                    throw new RuntimeException("schoolId obligatoire pour ce rôle");
+                }
+                schoolService.assertCurrentUserCanAccessSchool(request.schoolId());
+                School linked = schoolService.getSchool(request.schoolId());
+                user.setSchool(linked);
+                user.setTenantId(linked.getTenantId());
+            }
+        } else {
+            throw new RuntimeException("Action non autorisée");
+        }
+
         user.setPassword(this.passwordEncoder.encode(UUID.randomUUID().toString()));
         user.setActive(false);
         user = this.userRepository.save(user);
@@ -146,7 +210,7 @@ public class UserService implements UserDetailsService{
     @Override
     public User loadUserByUsername(String username) throws UsernameNotFoundException {
         return this.userRepository
-            .findByEmail(username)
+            .findByEmailWithSchoolScopes(username)
             .orElseThrow(() -> new UsernameNotFoundException("Pas d'utilisateur pour cet identifiant"));
     }
 

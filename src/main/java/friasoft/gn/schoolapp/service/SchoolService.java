@@ -5,6 +5,7 @@ import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
+import friasoft.gn.schoolapp.security.SchoolSecurity;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,23 +23,67 @@ public class SchoolService {
 
     private final SchoolRepository schoolRepository;
     private final UserRepository userRepository;
+    private final SchoolSecurity schoolSecurity;
 
     public List<School> listForAuthenticatedUser() {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (user.getRole() == User.UserRole.SUPER_ADMIN) {
             return getAll();
         }
-        Long tenantId = user.getTenantId();
-        if (tenantId == null) {
-            return List.of();
+        if (user.getRole() == User.UserRole.DIRECTOR) {
+            if (user.getSchool() == null || user.getSchool().getId() == null) {
+                return List.of();
+            }
+            return schoolRepository.findById(user.getSchool().getId())
+                .map(List::of)
+                .orElse(List.of());
         }
-        return schoolRepository.findByTenantIdOrderByIdAsc(tenantId);
+        if (user.getRole() == User.UserRole.ADMIN_ECOLE) {
+            Long tenantId = user.getOrganizationTenantId();
+            if (tenantId == null) {
+                tenantId = user.getTenantId();
+            }
+            if (tenantId == null) {
+                return List.of();
+            }
+            return schoolRepository.findByTenantIdOrderByIdAsc(tenantId);
+        }
+        if (user.getRole() == User.UserRole.STAFF
+            || user.getRole() == User.UserRole.TEACHER
+            || user.getRole() == User.UserRole.ACCOUNTANT) {
+            if (user.getSchool() == null || user.getSchool().getId() == null) {
+                return List.of();
+            }
+            return schoolRepository.findById(user.getSchool().getId())
+                .map(List::of)
+                .orElse(List.of());
+        }
+        return List.of();
     }
 
-    public void create(School school) {
+    @Transactional
+    public School create(School school) {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        school.setCreated_at(Instant.now());
-        this.schoolRepository.save(school);
+        Instant now = Instant.now();
+        school.setId(null);
+        school.setCreated_at(now);
+        school.setUpdated_at(now);
+        if (user.getRole() == User.UserRole.ADMIN_ECOLE) {
+            Long tid = user.getOrganizationTenantId();
+            if (tid == null) {
+                tid = user.getTenantId();
+            }
+            if (tid == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tenant du compte introuvable.");
+            }
+            school.setTenantId(tid);
+            school.setActive(false);
+        } else if (user.getRole() == User.UserRole.SUPER_ADMIN) {
+            // Le corps peut contenir tenant_id ; sinon création « sans tenant » (usage limité).
+        } else {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        return this.schoolRepository.save(school);
     }
 
     public List<School> getAll() {
@@ -58,13 +103,18 @@ public class SchoolService {
         return this.schoolRepository.save(school);
     }
 
+    @Transactional
     public void delete(Long schoolId) {
+        assertCurrentUserCanAccessSchool(schoolId);
         this.schoolRepository.deleteById(schoolId);
     }
 
+    @Transactional
     public void activate(Long schoolId, boolean active) {
+        assertCurrentUserCanAccessSchool(schoolId);
         School school = this.schoolRepository.findById(schoolId).orElseThrow(() -> new RuntimeException("School not found"));
         school.setActive(active);
+        school.setUpdated_at(Instant.now());
         this.schoolRepository.save(school);
     }
 
@@ -90,17 +140,10 @@ public class SchoolService {
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
-        if (user.getRole() == User.UserRole.SUPER_ADMIN) {
-            return;
-        }
-        Long tenantId = user.getTenantId();
-        if (tenantId == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-        boolean allowed = schoolRepository.findByTenantIdOrderByIdAsc(tenantId).stream()
-            .anyMatch(s -> s.getId().equals(schoolId));
-        if (!allowed) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "École non accessible pour ce tenant");
+        School school = schoolRepository.findById(schoolId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "École introuvable."));
+        if (!schoolSecurity.canAccessSchool(user, school)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "École non accessible pour ce compte.");
         }
     }
 }
