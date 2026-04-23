@@ -2,6 +2,11 @@ spring:
   application:
     name: schoolapp
 
+  servlet:
+    multipart:
+      # Par défaut Spring limite souvent à 1 Mo — insuffisant pour photos mobile haute définition.
+      max-file-size: 25MB
+      max-request-size: 28MB
 
   datasource:
     url: jdbc:postgresql://localhost:5432/schoolapp2
@@ -22,11 +27,27 @@ spring:
     change-log: classpath:db/changelog/master.xml
 
   mail:
-    host: msms
-    username: lllll
-    password: lllll
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    protocol: smtp
+    default-encoding: UTF-8
+    # Expéditeur affiché côté client mail (MailHog accepte n’importe quelle adresse en local).
+    from: ${MAIL_FROM:no-reply@schoolapp.local}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
-
+# Évite que /actuator/health passe en DEGRADED si MailHog n’est pas démarré en local.
+management:
+  health:
+    mail:
+      enabled: false
 
 server:
   servlet:

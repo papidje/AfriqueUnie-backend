@@ -1,9 +1,11 @@
 package friasoft.gn.schoolapp.controller;
 
+import friasoft.gn.schoolapp.dto.StudentPaymentLedgerRowDTO;
 import friasoft.gn.schoolapp.dto.StudentPaymentStatusDTO;
 import friasoft.gn.schoolapp.dto.StudentPaymentInfoDTO;
 import friasoft.gn.schoolapp.dto.FinancePaymentDtos.CreatePaymentRequest;
 import friasoft.gn.schoolapp.dto.FinancePaymentDtos.CreatePaymentResponse;
+import friasoft.gn.schoolapp.dto.FinancePaymentDtos.PaymentReceiptView;
 import friasoft.gn.schoolapp.service.FinanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -36,6 +39,16 @@ public class FinanceController {
     }
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @GetMapping("/payments/student/{studentId}")
+    public List<StudentPaymentLedgerRowDTO> listStudentPayments(@PathVariable Long studentId) {
+        try {
+            return financeService.listPaymentLedgerForStudent(studentId);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping("/payment-info/{studentId}")
     public StudentPaymentInfoDTO getPaymentInfo(@PathVariable Long studentId) {
         try {
@@ -50,6 +63,19 @@ public class FinanceController {
     public CreatePaymentResponse createPayment(@PathVariable Long studentId, @RequestBody CreatePaymentRequest request) {
         try {
             return financeService.createStudentPayment(studentId, request);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @GetMapping("/receipt/{studentId}")
+    public PaymentReceiptView getReceiptDuplicate(
+        @PathVariable Long studentId,
+        @RequestParam("reference") String reference
+    ) {
+        try {
+            return financeService.getReceiptDuplicate(studentId, reference);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }

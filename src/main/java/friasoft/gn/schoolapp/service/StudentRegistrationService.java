@@ -5,18 +5,14 @@ import friasoft.gn.schoolapp.dto.RegistrationDTO;
 import friasoft.gn.schoolapp.dto.StudentRegistrationDTO;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.Parent;
-import friasoft.gn.schoolapp.entity.school.Payment;
 import friasoft.gn.schoolapp.entity.school.Student;
 import friasoft.gn.schoolapp.entity.school.StudentAccount;
 import friasoft.gn.schoolapp.repository.IStudentAccountRepository;
-import friasoft.gn.schoolapp.repository.IPaymentRepository;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 @Service
 @AllArgsConstructor
@@ -27,7 +23,7 @@ public class StudentRegistrationService {
     private final ISchoolClassRepository schoolClassRepository;
     private final SchoolService schoolService;
     private final IStudentAccountRepository studentAccountRepository;
-    private final IPaymentRepository paymentRepository;
+    private final FinanceService financeService;
 
     @Transactional
     public Student registerStudent(RegistrationDTO dto) {
@@ -40,10 +36,8 @@ public class StudentRegistrationService {
         if (dto.classId() == null) {
             throw new IllegalArgumentException("classId obligatoire.");
         }
-        if (dto.amountPaid() == null) {
-            throw new IllegalArgumentException("amountPaid obligatoire.");
-        }
-        if (dto.amountPaid() < 0) {
+        double amountPaid = dto.amountPaid() == null ? 0d : dto.amountPaid();
+        if (amountPaid < 0) {
             throw new IllegalArgumentException("amountPaid doit être >= 0.");
         }
 
@@ -82,14 +76,14 @@ public class StudentRegistrationService {
         account.setSuppliesPaid(false);
         account = studentAccountRepository.save(account);
 
-        Payment payment = new Payment();
-        payment.setTenantId(tenantId);
-        payment.setStudentAccount(account);
-        payment.setPaymentType(Payment.PaymentType.INSCRIPTION);
-        payment.setAmount(dto.amountPaid());
-        payment.setCurrency(normalizeCurrency(dto.currency()));
-        payment.setPaymentDate(LocalDateTime.now());
-        paymentRepository.save(payment);
+        if (amountPaid > 0d) {
+            financeService.allocateDeclaredTotalForNewStudentAccount(
+                savedStudent.getId(),
+                amountPaid,
+                dto.paymentMode(),
+                normalizeCurrency(dto.currency())
+            );
+        }
 
         return savedStudent;
     }

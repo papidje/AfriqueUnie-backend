@@ -12,4 +12,6 @@ public interface IActivationRepository extends JpaRepository<Activation, Short> 
     Optional<Activation> findByCode(String code);
 
     void deleteAllByExpirationBefore(Instant now);
+
+    void deleteAllByUser_Id(Long userId);
 }

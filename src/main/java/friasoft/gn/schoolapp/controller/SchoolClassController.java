@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.controller;
 
+import friasoft.gn.schoolapp.dto.response.SchoolClassOverviewResponse;
 import friasoft.gn.schoolapp.entity.school.SchoolClass;
 import friasoft.gn.schoolapp.service.SchoolClassService;
 import lombok.AllArgsConstructor;
@@ -34,6 +35,11 @@ public class SchoolClassController {
     @GetMapping("/school/{schoolId}/active-year")
     public List<SchoolClass> listForActiveSchoolYear(@PathVariable Long schoolId) {
         return service.listForActiveSchoolYear(schoolId);
+    }
+
+    @GetMapping("/school/{schoolId}/active-year/overview")
+    public List<SchoolClassOverviewResponse> listOverviewForActiveSchoolYear(@PathVariable Long schoolId) {
+        return service.listOverviewForActiveSchoolYear(schoolId);
     }
 
     @PostMapping

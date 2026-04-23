@@ -1,9 +1,13 @@
 package friasoft.gn.schoolapp.service;
 
+import friasoft.gn.schoolapp.dto.StudentPaymentLedgerRowDTO;
 import friasoft.gn.schoolapp.dto.StudentPaymentStatusDTO;
 import friasoft.gn.schoolapp.dto.StudentPaymentInfoDTO;
 import friasoft.gn.schoolapp.dto.FinancePaymentDtos.CreatePaymentRequest;
 import friasoft.gn.schoolapp.dto.FinancePaymentDtos.CreatePaymentResponse;
+import friasoft.gn.schoolapp.dto.FinancePaymentDtos.PaymentReceiptView;
+import friasoft.gn.schoolapp.dto.FinancePaymentDtos.ReceiptLine;
+import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.FeeStructure;
 import friasoft.gn.schoolapp.entity.school.Payment;
 import friasoft.gn.schoolapp.entity.school.SchoolClass;
@@ -14,13 +18,20 @@ import friasoft.gn.schoolapp.repository.IPaymentRepository;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.IStudentAccountRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
+import friasoft.gn.schoolapp.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.EnumMap;
 import java.util.Set;
@@ -41,6 +52,102 @@ public class FinanceService {
     private final IPaymentRepository paymentRepository;
     private final IFeeStructureRepository feeStructureRepository;
     private final SchoolService schoolService;
+    private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public List<StudentPaymentLedgerRowDTO> listPaymentLedgerForStudent(Long studentId) {
+        if (studentId == null) {
+            throw new IllegalArgumentException("studentId obligatoire.");
+        }
+        Student student = studentRepository.findById(studentId)
+            .orElseThrow(() -> new IllegalArgumentException("Élève introuvable."));
+        if (student.getSchoolClass() == null || student.getSchoolClass().getYear() == null
+            || student.getSchoolClass().getYear().getSchool() == null) {
+            throw new IllegalArgumentException("Contexte classe introuvable.");
+        }
+        schoolService.assertCurrentUserCanAccessSchool(student.getSchoolClass().getYear().getSchool().getId());
+        return paymentRepository.findAllByStudentIdOrderByPaymentDateDesc(studentId).stream()
+            .map(this::toLedgerRow)
+            .toList();
+    }
+
+    private StudentPaymentLedgerRowDTO toLedgerRow(Payment p) {
+        StudentAccount a = p.getStudentAccount();
+        String yearLabel = (a.getSchoolYear() != null && a.getSchoolYear().getLabel() != null)
+            ? a.getSchoolYear().getLabel()
+            : "—";
+        return new StudentPaymentLedgerRowDTO(
+            p.getId(),
+            p.getPaymentType() != null ? p.getPaymentType().name() : null,
+            p.getAmount(),
+            p.getCurrency(),
+            p.getPaymentMode() != null ? p.getPaymentMode().name() : null,
+            p.getPaymentDate(),
+            yearLabel,
+            p.getReceiptReference(),
+            p.getRecordedBy(),
+            p.getValidatedBy() != null ? p.getValidatedBy().getFullname() : null,
+            tuitionMonthLabelForPayment(p)
+        );
+    }
+
+    private void attachPaymentValidator(Payment p) {
+        User u = currentUserOrNull();
+        if (u == null || u.getId() == null) {
+            return;
+        }
+        p.setValidatedBy(userRepository.getReferenceById(u.getId()));
+    }
+
+    private static User currentUserOrNull() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+            return null;
+        }
+        return user;
+    }
+
+    private static String tuitionMonthLabelForPayment(Payment p) {
+        if (p.getPaymentType() != Payment.PaymentType.SCOLARITE) {
+            return null;
+        }
+        return monthLabelFromMonthCode(p.getTuitionMonthCode());
+    }
+
+    private static String monthLabelFromMonthCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        String c = code.trim().toUpperCase(Locale.ROOT);
+        int idx = MONTHS_OCT_TO_JUN.indexOf(c);
+        return idx >= 0 ? MONTHS_LABELS_OCT_TO_JUN.get(idx) : code.trim();
+    }
+
+    private void saveFournituresPayment(
+        StudentAccount account,
+        Payment.PaymentMode paymentMode,
+        String currency,
+        double amount,
+        String receiptReference,
+        String recordedBy,
+        List<ReceiptLine> linesOut
+    ) {
+        if (amount <= 0d) {
+            return;
+        }
+        Payment p = new Payment();
+        p.setTenantId(account.getTenantId());
+        p.setStudentAccount(account);
+        p.setPaymentMode(paymentMode);
+        p.setCurrency(currency);
+        p.setAmount(amount);
+        p.setPaymentType(Payment.PaymentType.FOURNITURES);
+        p.setReceiptReference(receiptReference);
+        p.setRecordedBy(recordedBy);
+        attachPaymentValidator(p);
+        paymentRepository.save(p);
+        appendReceiptLine(linesOut, Payment.PaymentType.FOURNITURES, amount, null);
+    }
 
     @Transactional(readOnly = true)
     public List<StudentPaymentStatusDTO> getClassPaymentStatus(Long classId) {
@@ -105,7 +212,8 @@ public class FinanceService {
             .findByStudent_IdAndSchoolYear_Id(studentId, schoolClass.getYear().getId())
             .orElseThrow(() -> new IllegalArgumentException("Compte élève introuvable pour l'année en cours."));
 
-        PaymentSums sums = groupPaymentSumsByAccount(paymentRepository.findByStudentAccount_IdIn(List.of(account.getId())))
+        List<Payment> accountPayments = paymentRepository.findByStudentAccount_IdIn(List.of(account.getId()));
+        PaymentSums sums = groupPaymentSumsByAccount(accountPayments)
             .getOrDefault(account.getId(), PaymentSums.empty());
 
         double inscriptionPaid = sums.get(Payment.PaymentType.INSCRIPTION);
@@ -119,8 +227,22 @@ public class FinanceService {
         double insReinsRemaining = Math.max(0d, insReinsExpected - insReinsPaid);
 
         double monthlyFee = nvl(feeStructure.getMonthlyTuitionFee());
-        double tuitionPaid = sums.get(Payment.PaymentType.SCOLARITE);
-        List<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO> monthlyStatuses = buildMonthlyTuitionStatuses(monthlyFee, tuitionPaid);
+        Map<String, Double> explicitTuitionByMonth = new HashMap<>();
+        double orphanTuition = 0d;
+        for (Payment p : accountPayments) {
+            if (p.getPaymentType() != Payment.PaymentType.SCOLARITE) {
+                continue;
+            }
+            double amt = nvl(p.getAmount());
+            String rawCode = p.getTuitionMonthCode();
+            if (rawCode == null || rawCode.isBlank()) {
+                orphanTuition += amt;
+            } else {
+                explicitTuitionByMonth.merge(rawCode.trim().toUpperCase(Locale.ROOT), amt, Double::sum);
+            }
+        }
+        List<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO> monthlyStatuses =
+            buildMonthlyTuitionStatuses(monthlyFee, explicitTuitionByMonth, orphanTuition);
 
         boolean suppliesColumnEnabled = Boolean.TRUE.equals(feeStructure.getSuppliesColumnEnabled());
         double suppliesExpected = suppliesColumnEnabled ? nvl(feeStructure.getSuppliesFee()) : 0d;
@@ -141,6 +263,34 @@ public class FinanceService {
         );
     }
 
+    /**
+     * Répartit un montant saisi sur inscription/réinscription, fournitures (si intégral), puis mensualités — même ordre que l’encaissement.
+     * Utilisé après création du compte élève (inscription).
+     */
+    @Transactional
+    public double allocateDeclaredTotalForNewStudentAccount(Long studentId, double total, String paymentModeRaw, String currency) {
+        if (studentId == null) {
+            throw new IllegalArgumentException("studentId obligatoire.");
+        }
+        if (total <= 0d) {
+            return 0d;
+        }
+        StudentPaymentInfoDTO info = getStudentPaymentInfo(studentId);
+        double open = computeOpenBalanceTotal(info);
+        if (total > open + 1e-6) {
+            throw new IllegalArgumentException("Le montant dépasse le reliquat dû pour cet élève.");
+        }
+        Student student = studentRepository.findById(studentId)
+            .orElseThrow(() -> new IllegalArgumentException("Élève introuvable."));
+        Long yearId = student.getSchoolClass().getYear().getId();
+        StudentAccount account = studentAccountRepository.findByStudent_IdAndSchoolYear_Id(studentId, yearId)
+            .orElseThrow(() -> new IllegalArgumentException("Compte élève introuvable."));
+        Payment.PaymentMode paymentMode = parsePaymentMode(paymentModeRaw);
+        String ref = newReceiptReference();
+        return allocateAndPersistFromDeclaredTotal(
+            account, info, paymentMode, normalizeCurrency(currency), total, ref, "Inscription", null);
+    }
+
     @Transactional
     public CreatePaymentResponse createStudentPayment(Long studentId, CreatePaymentRequest request) {
         if (studentId == null) {
@@ -149,6 +299,9 @@ public class FinanceService {
         if (request == null) {
             throw new IllegalArgumentException("Requête de paiement obligatoire.");
         }
+        String recordedBy = requireRecordedBy(request.recordedBy());
+        String receiptRef = newReceiptReference();
+        List<ReceiptLine> receiptLines = new ArrayList<>();
 
         StudentPaymentInfoDTO info = getStudentPaymentInfo(studentId);
         Student student = studentRepository.findById(studentId)
@@ -171,7 +324,8 @@ public class FinanceService {
             if (declared > openBalance + 1e-6) {
                 throw new IllegalArgumentException("Le montant dépasse le reliquat dû pour cet élève.");
             }
-            totalCollected = allocateAndPersistFromDeclaredTotal(account, info, paymentMode, currency, declared);
+            totalCollected = allocateAndPersistFromDeclaredTotal(
+                account, info, paymentMode, currency, declared, receiptRef, recordedBy, receiptLines);
         } else {
             double plannedLegacy = computeLegacyPlannedAmount(info, request);
             if (plannedLegacy <= 1e-6) {
@@ -192,17 +346,26 @@ public class FinanceService {
                     p.setPaymentMode(paymentMode);
                     p.setCurrency(currency);
                     p.setAmount(amount);
+                    p.setReceiptReference(receiptRef);
+                    p.setRecordedBy(recordedBy);
                     p.setPaymentType("REINSCRIPTION".equalsIgnoreCase(info.insReinsType())
                         ? Payment.PaymentType.REINSCRIPTION
                         : Payment.PaymentType.INSCRIPTION);
+                    attachPaymentValidator(p);
                     paymentRepository.save(p);
+                    appendReceiptLine(receiptLines, p.getPaymentType(), amount, null);
                     totalCollected += amount;
                 }
             }
 
-            if (Boolean.TRUE.equals(request.paySupplies()) && info.suppliesColumnEnabled()) {
-                account.setSuppliesPaid(true);
-                studentAccountRepository.save(account);
+            if (Boolean.TRUE.equals(request.paySupplies()) && info.suppliesColumnEnabled() && !info.suppliesPaid()) {
+                double supRem = Math.max(0d, nvl(info.suppliesExpected()));
+                if (supRem > 0d) {
+                    account.setSuppliesPaid(true);
+                    studentAccountRepository.save(account);
+                    saveFournituresPayment(account, paymentMode, currency, supRem, receiptRef, recordedBy, receiptLines);
+                    totalCollected += supRem;
+                }
             }
 
             List<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO> openMonths = info.monthlyTuition().stream()
@@ -230,8 +393,14 @@ public class FinanceService {
                     p.setPaymentMode(paymentMode);
                     p.setCurrency(currency);
                     p.setAmount(remain);
+                    p.setReceiptReference(receiptRef);
+                    p.setRecordedBy(recordedBy);
                     p.setPaymentType(Payment.PaymentType.SCOLARITE);
+                    String mCode = m.monthCode() != null ? m.monthCode().trim().toUpperCase(Locale.ROOT) : null;
+                    p.setTuitionMonthCode(mCode);
+                    attachPaymentValidator(p);
                     paymentRepository.save(p);
+                    appendReceiptLine(receiptLines, Payment.PaymentType.SCOLARITE, remain, m.monthLabel());
                     totalCollected += remain;
                 }
             }
@@ -242,8 +411,84 @@ public class FinanceService {
             info.schoolClassId(),
             totalCollected,
             paymentMode.name(),
-            "RCPT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase()
+            receiptRef,
+            recordedBy,
+            List.copyOf(receiptLines)
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentReceiptView getReceiptDuplicate(Long studentId, String reference) {
+        if (studentId == null || reference == null || reference.isBlank()) {
+            throw new IllegalArgumentException("studentId et reference obligatoires.");
+        }
+        String ref = reference.trim();
+        Student student = studentRepository.findById(studentId)
+            .orElseThrow(() -> new IllegalArgumentException("Élève introuvable."));
+        if (student.getSchoolClass() == null || student.getSchoolClass().getYear() == null
+            || student.getSchoolClass().getYear().getSchool() == null) {
+            throw new IllegalArgumentException("Contexte classe introuvable.");
+        }
+        schoolService.assertCurrentUserCanAccessSchool(student.getSchoolClass().getYear().getSchool().getId());
+        List<Payment> list = paymentRepository.findByStudentIdAndReceiptReference(studentId, ref);
+        if (list.isEmpty()) {
+            throw new IllegalArgumentException("Aucun paiement pour cette référence.");
+        }
+        Payment first = list.get(0);
+        StudentAccount acc = first.getStudentAccount();
+        String yearLabel = acc.getSchoolYear() != null && acc.getSchoolYear().getLabel() != null
+            ? acc.getSchoolYear().getLabel()
+            : "—";
+        List<ReceiptLine> lines = list.stream()
+            .map(p -> new ReceiptLine(
+                p.getPaymentType() != null ? p.getPaymentType().name() : "",
+                p.getAmount(),
+                p.getPaymentType() == Payment.PaymentType.SCOLARITE ? monthLabelFromMonthCode(p.getTuitionMonthCode()) : null
+            ))
+            .toList();
+        double total = list.stream().mapToDouble(p -> nvl(p.getAmount())).sum();
+        LocalDateTime when = list.stream()
+            .map(Payment::getPaymentDate)
+            .max(LocalDateTime::compareTo)
+            .orElse(first.getPaymentDate());
+        String mode = first.getPaymentMode() != null ? first.getPaymentMode().name() : "ESPECES";
+        String cur = first.getCurrency() != null ? first.getCurrency() : "GNF";
+        return new PaymentReceiptView(
+            (student.getLastName() + " " + student.getFirstName()).trim(),
+            student.getMatricule(),
+            yearLabel,
+            ref,
+            first.getRecordedBy(),
+            mode,
+            cur,
+            when,
+            lines,
+            total,
+            true
+        );
+    }
+
+    private static String newReceiptReference() {
+        return "RCPT-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+    }
+
+    private static String requireRecordedBy(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("L'auteur du paiement est obligatoire.");
+        }
+        return raw.trim();
+    }
+
+    private static void appendReceiptLine(
+        List<ReceiptLine> out,
+        Payment.PaymentType type,
+        double amount,
+        String tuitionMonthLabel
+    ) {
+        if (out == null || amount <= 0d || type == null) {
+            return;
+        }
+        out.add(new ReceiptLine(type.name(), amount, tuitionMonthLabel));
     }
 
     /** Reliquat théorique aligné sur l’écran d’encaissement (inscription + fournitures si impayées + mensualités ouvertes). */
@@ -301,7 +546,10 @@ public class FinanceService {
         StudentPaymentInfoDTO info,
         Payment.PaymentMode paymentMode,
         String currency,
-        double total
+        double total,
+        String receiptReference,
+        String recordedBy,
+        List<ReceiptLine> linesOut
     ) {
         if (total <= 0d) {
             throw new IllegalArgumentException("Montant invalide.");
@@ -318,10 +566,14 @@ public class FinanceService {
             p.setPaymentMode(paymentMode);
             p.setCurrency(currency);
             p.setAmount(pay);
+            p.setReceiptReference(receiptReference);
+            p.setRecordedBy(recordedBy);
             p.setPaymentType("REINSCRIPTION".equalsIgnoreCase(info.insReinsType())
                 ? Payment.PaymentType.REINSCRIPTION
                 : Payment.PaymentType.INSCRIPTION);
+            attachPaymentValidator(p);
             paymentRepository.save(p);
+            appendReceiptLine(linesOut, p.getPaymentType(), pay, null);
             collected += pay;
             R -= pay;
         }
@@ -331,6 +583,7 @@ public class FinanceService {
             if (sup > 0d && R >= sup) {
                 account.setSuppliesPaid(true);
                 studentAccountRepository.save(account);
+                saveFournituresPayment(account, paymentMode, currency, sup, receiptReference, recordedBy, linesOut);
                 collected += sup;
                 R -= sup;
             }
@@ -355,8 +608,14 @@ public class FinanceService {
                 p.setPaymentMode(paymentMode);
                 p.setCurrency(currency);
                 p.setAmount(pay);
+                p.setReceiptReference(receiptReference);
+                p.setRecordedBy(recordedBy);
                 p.setPaymentType(Payment.PaymentType.SCOLARITE);
+                String mCode = m.monthCode() != null ? m.monthCode().trim().toUpperCase(Locale.ROOT) : null;
+                p.setTuitionMonthCode(mCode);
+                attachPaymentValidator(p);
                 paymentRepository.save(p);
+                appendReceiptLine(linesOut, Payment.PaymentType.SCOLARITE, pay, m.monthLabel());
                 collected += pay;
                 R -= pay;
             }
@@ -394,7 +653,8 @@ public class FinanceService {
         double tuitionPaid = sums.get(Payment.PaymentType.SCOLARITE);
         double paymentPercentage = tuitionExpected <= 0d ? 100d : (tuitionPaid / tuitionExpected) * 100d;
         boolean suppliesColumnEnabled = Boolean.TRUE.equals(feeStructure.getSuppliesColumnEnabled());
-        boolean hasPaidSupplies = Boolean.TRUE.equals(account != null ? account.getSuppliesPaid() : Boolean.FALSE);
+        boolean hasPaidSupplies = Boolean.TRUE.equals(account != null ? account.getSuppliesPaid() : Boolean.FALSE)
+            || sums.get(Payment.PaymentType.FOURNITURES) > 0d;
 
         Map<String, Boolean> monthlyCoverage = buildMonthlyCoverage(tuitionPaid, monthlyFee);
 
@@ -442,16 +702,28 @@ public class FinanceService {
         return result;
     }
 
-    private List<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO> buildMonthlyTuitionStatuses(double monthlyFee, double tuitionPaid) {
-        double remaining = Math.max(0d, tuitionPaid);
-        var rows = new java.util.ArrayList<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO>(MONTHS_OCT_TO_JUN.size());
+    /**
+     * Soldes par mois : montants explicitement rattachés à un mois (nouveaux encaissements) + reliquat « sans mois »
+     * réparti en Oct→Juin (comportement historique pour les anciennes lignes SCOLARITE).
+     */
+    private List<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO> buildMonthlyTuitionStatuses(
+        double monthlyFee,
+        Map<String, Double> explicitByMonth,
+        double orphanTuition
+    ) {
+        var rows = new ArrayList<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO>(MONTHS_OCT_TO_JUN.size());
+        double orphanRem = Math.max(0d, orphanTuition);
         for (int i = 0; i < MONTHS_OCT_TO_JUN.size(); i++) {
+            String code = MONTHS_OCT_TO_JUN.get(i);
             double due = Math.max(0d, monthlyFee);
-            double paid = Math.min(due, remaining);
-            remaining = Math.max(0d, remaining - paid);
-            String status = paid <= 0d ? "NON_PAYE" : (paid >= due ? "COMPLET" : "PARTIEL");
+            double explicit = nvl(explicitByMonth.get(code));
+            double needFromOrphan = Math.max(0d, due - explicit);
+            double fromOrphan = Math.min(orphanRem, needFromOrphan);
+            double paid = explicit + fromOrphan;
+            orphanRem -= fromOrphan;
+            String status = paid <= 0d ? "NON_PAYE" : (paid + 1e-6 >= due ? "COMPLET" : "PARTIEL");
             rows.add(new StudentPaymentInfoDTO.MonthlyTuitionStatusDTO(
-                MONTHS_OCT_TO_JUN.get(i),
+                code,
                 MONTHS_LABELS_OCT_TO_JUN.get(i),
                 due,
                 paid,

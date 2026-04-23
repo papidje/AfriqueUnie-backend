@@ -23,6 +23,22 @@ public interface ISchoolClassRepository extends JpaRepository<SchoolClass, Long>
         """)
     List<SchoolClass> findByYear_School_IdAndYear_ActiveTrue(@Param("schoolId") Long schoolId);
 
+    @Query("""
+        select count(sc)
+        from SchoolClass sc
+        join sc.year y
+        where y.school.id = :schoolId and y.active = true
+        """)
+    long countActiveSchoolYearClasses(@Param("schoolId") Long schoolId);
+
+    @Query("""
+        select coalesce(sum(sc.capacity), 0)
+        from SchoolClass sc
+        join sc.year y
+        where y.school.id = :schoolId and y.active = true
+        """)
+    long sumCapacityActiveSchoolYear(@Param("schoolId") Long schoolId);
+
     Optional<SchoolClass> findByYear_IdAndLevel_CodeAndName(Long yearId, String levelCode, String name);
 
     @Query("""

@@ -14,9 +14,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.*;
@@ -32,9 +34,37 @@ public class UserService implements UserDetailsService{
     private NotificationService notificationService;
     private final SchoolService schoolService;
 
-    public void sendActivationEmail(User user) {
+    /** Crée une activation, envoie le mail et retourne l’enregistrement (ex. code pour l’API d’invitation). */
+    public Activation sendActivationEmail(User user) {
         Activation activation = createActivation(user);
         this.notificationService.sendActivationMail(activation);
+        return activation;
+    }
+
+    /**
+     * Remplace toute activation existante pour l’utilisateur, en enregistre une nouvelle et envoie le mail.
+     * Réservé aux comptes encore inactifs (invitation non finalisée).
+     */
+    @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'SUPER_ADMIN', 'DIRECTOR')")
+    public void resendActivationEmail(Long userId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identifiant utilisateur obligatoire.");
+        }
+        User current = getUserInfo();
+        if (current == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+        User target = this.userRepository.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable."));
+        assertCurrentUserMayManageTargetUser(current, target);
+        if (target.isActive()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ce compte est déjà activé.");
+        }
+        if (target.getEmail() == null || target.getEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Aucune adresse e-mail pour cet utilisateur.");
+        }
+        sendActivationEmail(target);
     }
 
     @Transactional(readOnly = true)
@@ -153,12 +183,13 @@ public class UserService implements UserDetailsService{
         user.setActive(false);
         user = this.userRepository.save(user);
 
-        Activation activation = createActivation(user);
+        Activation activation = sendActivationEmail(user);
         String activationCode = activation.getCode();
-        log.info("Activation code for invited user {}: {}", user.getEmail(), activationCode);
+        log.info("Invitation : mail d'activation envoyé à {} (code trace serveur : {})", user.getEmail(), activationCode);
         return activationCode;
     }
 
+    @Transactional
     public void activate(ActivationRequest activation) {
         if (activation.email() == null || activation.email().isBlank()) {
             throw new RuntimeException("Email obligatoire");
@@ -179,17 +210,20 @@ public class UserService implements UserDetailsService{
             user.setActive(true);
             this.userRepository.save(user);
             this.iActivationRepository.delete(savedActivation);
+            this.notificationService.sendAccountActivatedMail(user);
         } else {
             throw new RuntimeException("Activation expired");
         }
     }
 
+    @Transactional
     public void resetPassword(Map<String, String> request) {
         User user = this.loadUserByUsername(request.get("email"));
         Activation activation = createActivation(user);
         this.notificationService.sendResetPassWordMail(activation);
     }
 
+    @Transactional
     public void updatePassword(Map<String, String> request) {
         Activation savedActivation = this.iActivationRepository.findByCode(request.get("code"))
         .orElseThrow(() -> new RuntimeException("Activation code invalide"));
@@ -198,6 +232,7 @@ public class UserService implements UserDetailsService{
             user.setPassword(this.passwordEncoder.encode(request.get("password")));
             this.userRepository.save(user);
             this.iActivationRepository.delete(savedActivation);
+            this.notificationService.sendPasswordChangedConfirmationMail(user);
         } else {
             throw new RuntimeException("Activation expired");
         }
@@ -219,14 +254,84 @@ public class UserService implements UserDetailsService{
         return (User) authentication.getPrincipal();
     }
 
+    /**
+     * Met à jour le mot de passe du compte connecté après vérification de l’ancien.
+     */
+    @Transactional
+    public void changeOwnPassword(User principal, String currentPassword, String newPassword) {
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mot de passe actuel requis.");
+        }
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nouveau mot de passe requis.");
+        }
+        if (newPassword.equals(currentPassword)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Le nouveau mot de passe doit être différent du mot de passe actuel."
+            );
+        }
+        User user = this.userRepository.findById(principal.getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable."));
+        if (!this.passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le mot de passe actuel est incorrect.");
+        }
+        user.setPassword(this.passwordEncoder.encode(newPassword));
+        this.userRepository.save(user);
+        this.notificationService.sendPasswordChangedConfirmationMail(user);
+    }
+
     private Activation createActivation(User user) {
+        if (user.getId() != null) {
+            this.iActivationRepository.deleteAllByUser_Id(user.getId());
+        }
         Random random = new Random();
         Activation activation = new Activation();
         activation.setCode(String.format("%06d", random.nextInt(999999)));
         activation.setRegistrationDate(Instant.now());
-        activation.setExpiration(Instant.now().plusMillis(30 * 60 * 1000));
+        activation.setExpiration(
+            Instant.now().plusMillis(NotificationService.ACTIVATION_CODE_VALIDITY_MINUTES * 60L * 1000L)
+        );
         activation.setUser(user);
         return iActivationRepository.save(activation);
+    }
+
+    /**
+     * Même périmètre que {@link #getAll()} : qui peut voir l’utilisateur peut lui renvoyer un code d’activation.
+     */
+    private void assertCurrentUserMayManageTargetUser(User current, User target) {
+        if (target.getRole() == User.UserRole.SUPER_ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Action interdite.");
+        }
+        if (current.getRole() == User.UserRole.SUPER_ADMIN) {
+            return;
+        }
+        if (current.getRole() == User.UserRole.DIRECTOR) {
+            if (target.getRole() != User.UserRole.TEACHER && target.getRole() != User.UserRole.ACCOUNTANT) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Action non autorisée.");
+            }
+            School dirSchool = current.getSchool();
+            School tSchool = target.getSchool();
+            if (dirSchool == null || dirSchool.getId() == null || tSchool == null || tSchool.getId() == null
+                || !dirSchool.getId().equals(tSchool.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Action non autorisée.");
+            }
+            schoolService.assertCurrentUserCanAccessSchool(dirSchool.getId());
+            return;
+        }
+        if (current.getRole() == User.UserRole.ADMIN_ECOLE) {
+            Long tenantId = current.getOrganizationTenantId() != null
+                ? current.getOrganizationTenantId()
+                : current.getTenantId();
+            Long uTenant = target.getOrganizationTenantId() != null
+                ? target.getOrganizationTenantId()
+                : target.getTenantId();
+            if (tenantId == null || uTenant == null || !tenantId.equals(uTenant)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Action non autorisée.");
+            }
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Action non autorisée.");
     }
 
     public List<User> getAdminBySchool(Long schoolId) {

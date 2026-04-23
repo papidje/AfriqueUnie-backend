@@ -46,6 +46,10 @@ public class SchoolClass implements TenantAware {
     @Column(nullable = false, length = 50)
     private String name;
 
+    /** Effectif maximum (inscription / capacité affichée côté UI). */
+    @Column(nullable = false)
+    private Integer capacity = 40;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

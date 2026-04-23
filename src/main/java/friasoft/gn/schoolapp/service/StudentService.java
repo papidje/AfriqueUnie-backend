@@ -1,5 +1,7 @@
 package friasoft.gn.schoolapp.service;
 
+import friasoft.gn.schoolapp.dto.request.StudentPatchRequest;
+import friasoft.gn.schoolapp.dto.request.StudentProfileUpdateRequest;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.Student;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
@@ -15,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-// StudentService.java
 @Service
 @AllArgsConstructor
 public class StudentService implements IStudentService {
@@ -34,8 +35,11 @@ public class StudentService implements IStudentService {
     }
 
     @Override
+    @Transactional
     public Student save(Student student) {
-        student.setMatricule(student.buildMatricule());
+        if (student.getId() == null) {
+            student.setMatricule(student.buildMatricule());
+        }
         return repository.save(student);
     }
 
@@ -56,17 +60,109 @@ public class StudentService implements IStudentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Student> findById(Long id) {
-        Optional<Student> opt = repository.findById(id);
-        if (opt.isEmpty()) {
-            return Optional.empty();
-        }
-        Student s = opt.get();
-        if (s.getSchoolClass() != null && s.getSchoolClass().getYear() != null
-            && s.getSchoolClass().getYear().getSchool() != null) {
-            schoolService.assertCurrentUserCanAccessSchool(s.getSchoolClass().getYear().getSchool().getId());
-        }
+        Optional<Student> opt = repository.findByIdWithParentsAndClass(id);
+        opt.ifPresent(this::assertSchoolAccess);
         return opt;
+    }
+
+    @Override
+    @Transactional
+    public Student updateProfile(Long id, StudentProfileUpdateRequest request) {
+        Student student = loadStudentForUpdate(id);
+        if (request.civility() != null && !request.civility().isBlank()) {
+            student.setCivility(Student.Civility.valueOf(request.civility().trim().toUpperCase()));
+        }
+        student.setFirstName(requireNonBlank(request.firstName(), "Prénom obligatoire."));
+        student.setLastName(requireNonBlank(request.lastName(), "Nom obligatoire."));
+        if (request.birthDate() == null) {
+            throw new IllegalArgumentException("Date de naissance obligatoire.");
+        }
+        student.setBirthDate(request.birthDate());
+        student.setEmergencyContactName(requireNonBlank(request.emergencyContactName(), "Contact d'urgence (nom) obligatoire."));
+        student.setEmergencyContactPhone(requireNonBlank(request.emergencyContactPhone(), "Contact d'urgence (téléphone) obligatoire."));
+        return repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public Student patchStudent(Long id, StudentPatchRequest request) {
+        Student student = loadStudentForUpdate(id);
+        if (request.civility() != null) student.setCivility(Student.Civility.valueOf(request.civility().trim().toUpperCase()));
+        if (request.firstName() != null) student.setFirstName(request.firstName().trim());
+        if (request.lastName() != null) student.setLastName(request.lastName().trim());
+        if (request.birthDate() != null) student.setBirthDate(request.birthDate());
+        if (request.birthPlace() != null) student.setBirthPlace(trimToNull(request.birthPlace()));
+        if (request.nationality() != null) student.setNationality(trimToNull(request.nationality()));
+        if (request.address() != null) student.setAddress(trimToNull(request.address()));
+        if (request.communicationPhone() != null) student.setCommunicationPhone(trimToNull(request.communicationPhone()));
+        if (request.communicationEmail() != null) student.setCommunicationEmail(trimToNull(request.communicationEmail()));
+        if (request.emergencyContactName() != null) student.setEmergencyContactName(trimToNull(request.emergencyContactName()));
+        if (request.emergencyContactPhone() != null) student.setEmergencyContactPhone(trimToNull(request.emergencyContactPhone()));
+        if (request.bloodGroup() != null) student.setBloodGroup(trimToNull(request.bloodGroup()));
+        if (request.allergies() != null) student.setAllergies(trimToNull(request.allergies()));
+        if (request.tutorName() != null) student.setTutorName(trimToNull(request.tutorName()));
+        if (request.tutorProfession() != null) student.setTutorProfession(trimToNull(request.tutorProfession()));
+        if (request.tutorPhone() != null) student.setTutorPhone(trimToNull(request.tutorPhone()));
+        if (request.tutorEmail() != null) student.setTutorEmail(trimToNull(request.tutorEmail()));
+        if (request.classHistory() != null) student.setClassHistory(trimToNull(request.classHistory()));
+        if (request.enrollmentStatus() != null && !request.enrollmentStatus().isBlank()) {
+            student.setEnrollmentStatus(Student.EnrollmentStatus.valueOf(request.enrollmentStatus().trim().toUpperCase()));
+        }
+        return repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public Student updatePhotoPath(Long id, String photoPath) {
+        Student student = loadStudentForUpdate(id);
+        student.setPhotoPath(trimToNull(photoPath));
+        return repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public void unlinkFather(Long studentId) {
+        Student student = loadStudentForUpdate(studentId);
+        student.setFather(null);
+        repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public void unlinkMother(Long studentId) {
+        Student student = loadStudentForUpdate(studentId);
+        student.setMother(null);
+        repository.save(student);
+    }
+
+    private Student loadStudentForUpdate(Long studentId) {
+        Student student = repository.findByIdWithParentsAndClass(studentId)
+            .orElseThrow(() -> new IllegalArgumentException("Élève introuvable."));
+        assertSchoolAccess(student);
+        return student;
+    }
+
+    private void assertSchoolAccess(Student student) {
+        if (student.getSchoolClass() != null && student.getSchoolClass().getYear() != null
+            && student.getSchoolClass().getYear().getSchool() != null) {
+            schoolService.assertCurrentUserCanAccessSchool(student.getSchoolClass().getYear().getSchool().getId());
+        }
+    }
+
+    private static String requireNonBlank(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(message);
+        }
+        return value.trim();
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     @Override

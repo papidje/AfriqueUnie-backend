@@ -8,7 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 // StudentRepository.java
 @Repository
@@ -16,6 +18,14 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
     List<Student> findByLastNameContainingIgnoreCase(String lastName);
 
     List<Student> findBySchoolClass_Id(Long schoolClassId);
+
+    @Query("""
+        select s.schoolClass.id, count(s)
+        from Student s
+        where s.schoolClass.id in :classIds
+        group by s.schoolClass.id
+        """)
+    List<Object[]> countBySchoolClassIds(@Param("classIds") Collection<Long> classIds);
 
     @Query("""
         select s
@@ -36,11 +46,22 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
     long countBySchoolId(@Param("schoolId") Long schoolId);
 
     @Query("""
+        select count(s)
+        from Student s
+        join s.schoolClass sc
+        join sc.year y
+        where y.school.id = :schoolId
+          and y.active = true
+        """)
+    long countStudentsActiveSchoolYear(@Param("schoolId") Long schoolId);
+
+    @Query("""
         select s
         from Student s
         join fetch s.schoolClass sc
         join sc.year y
         where y.school.id = :schoolId
+          and y.active = true
         order by s.createdAt desc, s.id desc
         """)
     List<Student> findRecentWithClassForSchool(
@@ -63,4 +84,24 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
             """
     )
     Page<Student> findAllBySchoolId(@Param("schoolId") Long schoolId, Pageable pageable);
+
+    @Query("""
+        select distinct s from Student s
+        left join fetch s.father
+        left join fetch s.mother
+        left join fetch s.schoolClass sc
+        left join fetch sc.year y
+        left join fetch y.school sch
+        where s.id = :id
+        """)
+    Optional<Student> findByIdWithParentsAndClass(@Param("id") Long id);
+
+    @Query("""
+        select distinct s.photoPath
+        from Student s
+        where s.photoPath is not null
+          and trim(s.photoPath) <> ''
+        """)
+    List<String> findDistinctPhotoPaths();
+
 }

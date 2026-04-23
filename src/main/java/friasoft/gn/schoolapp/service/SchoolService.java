@@ -86,6 +86,14 @@ public class SchoolService {
         return this.schoolRepository.save(school);
     }
 
+    @Transactional
+    public School updateLogoPath(Long schoolId, String logoPath) {
+        School school = this.schoolRepository.findById(schoolId).orElseThrow(() -> new RuntimeException("School not found"));
+        school.setLogo(logoPath);
+        school.setUpdated_at(Instant.now());
+        return this.schoolRepository.save(school);
+    }
+
     public List<School> getAll() {
         List<School> actualList = new ArrayList<>();
         this.schoolRepository.findAll().iterator().forEachRemaining(actualList::add);
@@ -97,7 +105,7 @@ public class SchoolService {
         school.setName(dto.getName());
         school.setAdress(dto.getAdress());
         school.setContact(dto.getContact());
-        school.setLogo(dto.getLogo());
+        // Le logo est géré uniquement via l’upload (PATCH /schools/{id}/logo).
         school.setOpenDate(dto.getOpenDate());
         school.setUpdated_at(Instant.now());
         return this.schoolRepository.save(school);

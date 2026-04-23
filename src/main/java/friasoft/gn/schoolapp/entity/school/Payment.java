@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.entity.school;
 
+import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.tenancy.TenantAware;
 import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
@@ -31,7 +32,9 @@ public class Payment implements TenantAware {
     public enum PaymentType {
         INSCRIPTION,
         REINSCRIPTION,
-        SCOLARITE
+        SCOLARITE,
+        /** Frais de fournitures (montant aligné sur la structure de frais). */
+        FOURNITURES
     }
 
     public enum PaymentMode {
@@ -71,5 +74,22 @@ public class Payment implements TenantAware {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    /** Même référence pour toutes les lignes créées lors d’un même encaissement (reçu / duplicata / regroupement historique). */
+    @Column(name = "receipt_reference", length = 64)
+    private String receiptReference;
+
+    /** Personne ayant enregistré l’encaissement (saisie libre). */
+    @Column(name = "recorded_by", length = 200)
+    private String recordedBy;
+
+    /** Pour {@link PaymentType#SCOLARITE} : code mois (ex. OCT, NOV, …). Null pour les autres types ou données historiques. */
+    @Column(name = "tuition_month_code", length = 16)
+    private String tuitionMonthCode;
+
+    /** Utilisateur connecté au moment de l’enregistrement (historique fiche élève, hors reçu). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "validated_by_user_id")
+    private User validatedBy;
 }
 

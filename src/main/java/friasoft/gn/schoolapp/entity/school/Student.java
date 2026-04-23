@@ -53,17 +53,60 @@ public class Student implements TenantAware {
 
     private LocalDate birthDate;
 
+    @Column(length = 150)
+    private String birthPlace;
+
+    @Column(length = 120)
+    private String nationality;
+
     private String matricule;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "school_class_id")
     private SchoolClass schoolClass;
 
+    @Column(length = 255)
+    private String address;
+
+    @Column(length = 40)
+    private String communicationPhone;
+
+    @Column(length = 180)
+    private String communicationEmail;
+
     @Column(length = 150)
     private String emergencyContactName;
 
     @Column(length = 40)
     private String emergencyContactPhone;
+
+    @Column(length = 20)
+    private String bloodGroup;
+
+    @Column(length = 500)
+    private String allergies;
+
+    @Column(length = 150)
+    private String tutorName;
+
+    @Column(length = 150)
+    private String tutorProfession;
+
+    @Column(length = 40)
+    private String tutorPhone;
+
+    @Column(length = 180)
+    private String tutorEmail;
+
+    @Column(length = 255)
+    private String photoPath;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private EnrollmentStatus enrollmentStatus = EnrollmentStatus.INSCRIT;
+
+    @Column(length = 255)
+    private String classHistory;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -81,6 +124,11 @@ public class Student implements TenantAware {
 
     public enum Civility {
         MONSIEUR, MADAME
+    }
+
+    public enum EnrollmentStatus {
+        INSCRIT,
+        TRANSFERE
     }
 
     public String buildMatricule() {

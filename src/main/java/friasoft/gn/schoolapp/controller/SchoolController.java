@@ -3,22 +3,26 @@ package friasoft.gn.schoolapp.controller;
 import friasoft.gn.schoolapp.dto.ClassSubjectDtos.TeacherSummaryResponse;
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.service.SchoolService;
-import lombok.AllArgsConstructor;
+import friasoft.gn.schoolapp.storage.FileStorageService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 
 @Slf4j
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("schools")
 public class SchoolController {
     private final SchoolService schoolService;
+    private final FileStorageService fileStorageService;
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
     @PostMapping
@@ -38,6 +42,14 @@ public class SchoolController {
     @PutMapping("/{schoolId}")
     public School updateSchool(@PathVariable Long schoolId, @RequestBody School dto) {
         return schoolService.update(schoolId, dto);
+    }
+
+    @PreAuthorize("@schoolSecurity.checkUserSchool(authentication, #schoolId)")
+    @PatchMapping(value = "/{schoolId}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public School uploadLogo(@PathVariable Long schoolId, @RequestPart("file") MultipartFile file) {
+        School existing = schoolService.getSchool(schoolId);
+        String path = fileStorageService.storeSchoolLogo(schoolId, file, existing.getLogo());
+        return schoolService.updateLogoPath(schoolId, path);
     }
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")

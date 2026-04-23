@@ -1,6 +1,7 @@
 package friasoft.gn.schoolapp.controller;
 
 import friasoft.gn.schoolapp.dto.ParentDtos.ParentResponse;
+import friasoft.gn.schoolapp.dto.ParentSchoolListRow;
 import friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest;
 import friasoft.gn.schoolapp.entity.school.Parent;
 import friasoft.gn.schoolapp.service.ParentService;
@@ -11,12 +12,24 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/parents")
 @AllArgsConstructor
 public class ParentController {
 
     private final ParentService parentService;
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @GetMapping("/by-school/{schoolId}/active-year-enrolled")
+    public List<ParentSchoolListRow> listForSchoolActiveYear(@PathVariable Long schoolId) {
+        try {
+            return parentService.listForSchoolActiveYear(schoolId);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/by-phone")
@@ -26,6 +39,26 @@ public class ParentController {
                 .map(this::toResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @GetMapping("/{id}")
+    public ResponseEntity<ParentResponse> getById(@PathVariable Long id) {
+        return parentService.findById(id)
+            .map(this::toResponse)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PutMapping("/{id}")
+    public ResponseEntity<ParentResponse> update(@PathVariable Long id, @RequestBody ParentWriteRequest body) {
+        try {
+            Parent saved = parentService.update(id, body);
+            return ResponseEntity.ok(toResponse(saved));
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }

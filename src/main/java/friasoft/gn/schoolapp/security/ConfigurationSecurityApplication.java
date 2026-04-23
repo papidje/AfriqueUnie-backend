@@ -50,6 +50,8 @@ public class ConfigurationSecurityApplication {
                 .authorizeHttpRequests(authorize -> authorize
                     // Auth endpoints
                     .requestMatchers("/auth/**").permitAll()
+                    // Fichiers statiques uploadés (photos élèves)
+                    .requestMatchers("/uploads/**").permitAll()
                     // Super admin (context-path /api/rest en préfixe réel)
                     .requestMatchers("/super-admin/**").hasRole("SUPER_ADMIN")
                     .requestMatchers("/superadmin/**").hasRole("SUPER_ADMIN")
@@ -66,7 +68,13 @@ public class ConfigurationSecurityApplication {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        // Motifs : dev sur le Mac (localhost) + même appli ouverte depuis téléphone / tablette (IP LAN + port 4200).
+        configuration.setAllowedOriginPatterns(List.of(
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "http://192.168.*:*",
+            "http://10.*:*"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

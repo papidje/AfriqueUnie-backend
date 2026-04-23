@@ -1,0 +1,18 @@
+services:
+  backend:
+    build:
+      context: .
+    container_name: schoolapp-backend
+    restart: unless-stopped
+    environment:
+      APP_UPLOAD_DIR: /app/uploads
+    volumes:
+      - ./uploads:/app/uploads
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: schoolapp-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP — aligné sur spring.mail.port (backend sur la machine hôte)
+      - "8025:8025" # UI http://localhost:8025
