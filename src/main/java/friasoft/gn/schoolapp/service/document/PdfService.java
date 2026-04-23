@@ -9,13 +9,16 @@ import org.thymeleaf.context.Context;
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
+/**
+ * Génération PDF à partir de templates Thymeleaf (HTML/CSS) via OpenHTMLtoPDF.
+ */
 @Service
 @RequiredArgsConstructor
-public class PdfTemplateRenderer {
+public class PdfService {
 
     private final TemplateEngine templateEngine;
 
-    public byte[] render(String templateName, Map<String, Object> variables) {
+    public byte[] renderFromTemplate(String templateName, Map<String, Object> variables) {
         Context context = new Context();
         context.setVariables(variables);
         String html = templateEngine.process(templateName, context);

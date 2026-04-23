@@ -159,7 +159,7 @@ public class JwtService {
     }
 
     public Jwt tokenByValue(String token) {
-        return this.iJwtRepository.findByJwt(token).orElseThrow(() -> new EntityNotFoundException());
+        return this.iJwtRepository.findFirstByJwtOrderByIdDesc(token).orElseThrow(() -> new EntityNotFoundException());
     }
 
     private Key getKey() {

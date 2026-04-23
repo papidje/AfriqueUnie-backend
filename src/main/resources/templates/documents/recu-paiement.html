@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <style>
+        /* Même cadre de page et typo de base que attestation-inscription */
+        @page { size: A4; margin: 22mm 18mm; }
+        body {
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 12pt;
+            color: #111827;
+            margin: 0;
+            padding: 0;
+        }
+        .page {
+            position: relative;
+            min-height: 200mm;
+        }
+        .watermark {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .watermark img {
+            margin-top: 95mm;
+            width: 52%;
+            max-width: 280px;
+            height: auto;
+            opacity: 0.11;
+        }
+        .foreground {
+            position: relative;
+            z-index: 1;
+        }
+        /* Même règles d’en-tête que .header dans attestation-inscription (table HTML pour OpenHTMLtoPDF) */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #d1d5db;
+            padding-bottom: 12px;
+        }
+        .header-table td { vertical-align: middle; }
+        .header-table .header-logo { width: 80px; }
+        .header-table .header-logo img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+        }
+        .header-table .header-title {
+            text-align: left;
+            padding: 0 8px 0 0;
+        }
+        .header-table h1 {
+            margin: 0;
+            font-size: 20pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .header-table .header-receipt {
+            width: 34%;
+            text-align: right;
+            vertical-align: middle;
+            padding-left: 8px;
+        }
+        .receipt-stamp { line-height: 1.35; }
+        .receipt-stamp .line1 {
+            font-size: 8.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #374151;
+        }
+        .receipt-stamp .ref {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #111827;
+        }
+        .duplicata {
+            text-align: center;
+            color: #b45309;
+            font-weight: bold;
+            font-size: 10pt;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+        .info-table td { padding: 6px 0; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+        .info-table .k { width: 38%; color: #374151; font-weight: 600; }
+        .data-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 10.5pt; }
+        .data-table th, .data-table td {
+            border: 1px solid #9ca3af;
+            padding: 8px 10px;
+        }
+        .data-table th { background: #f3f4f6; text-align: left; font-size: 10pt; }
+        .data-table .amt { text-align: right; white-space: nowrap; width: 28%; }
+        .total-words {
+            margin: 14px 0 18px;
+            padding: 10px 12px;
+            border: 1px solid #6b7280;
+            background: #fafafa;
+        }
+        .total-words .tw-label {
+            font-size: 9pt;
+            text-transform: uppercase;
+            color: #4b5563;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .total-words .tw-text { font-size: 10.5pt; font-weight: bold; }
+        .total-row { margin-top: 6px; font-size: 11.5pt; }
+        .total-row .total-num { font-weight: bold; }
+        .mode-row { margin-top: 8px; }
+        .footer-table { width: 100%; border-collapse: collapse; margin-top: 36px; }
+        .footer-table td { width: 50%; vertical-align: top; padding: 0 8px; }
+        .sig-box { text-align: center; }
+        .sig-title { font-weight: bold; margin-bottom: 32px; font-size: 10.5pt; }
+        .sig-line {
+            border-top: 1px solid #6b7280;
+            margin: 0 10px;
+            padding-top: 6px;
+            font-size: 9.5pt;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <!-- Filigrane : &lt;img&gt; (data-URL) — les background-image en CSS posent souvent problème -->
+    <div class="watermark" th:if="${schoolLogoWatermarkDataUrl != null and !#strings.isEmpty(schoolLogoWatermarkDataUrl)}">
+        <img th:src="${schoolLogoWatermarkDataUrl}" alt=""/>
+    </div>
+
+    <div class="foreground">
+        <table class="header-table" cellspacing="0" cellpadding="0">
+            <tr>
+                <td class="header-logo">
+                    <img th:if="${schoolLogoDataUrl != null and !#strings.isEmpty(schoolLogoDataUrl)}"
+                         th:src="${schoolLogoDataUrl}" alt=""/>
+                </td>
+                <td class="header-title">
+                    <h1 th:text="${schoolName}">Nom de l'école</h1>
+                </td>
+                <td class="header-receipt">
+                    <div class="receipt-stamp">
+                        <div class="line1">REÇU DE PAIEMENT N°</div>
+                        <div class="ref" th:text="${receiptReference}">RCPT-…</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <p class="duplicata" th:if="${duplicate}">Duplicata</p>
+
+        <table class="info-table" cellspacing="0">
+            <tr>
+                <td class="k">Date du paiement</td>
+                <td th:text="${paymentDate}">01/01/2026</td>
+            </tr>
+            <tr>
+                <td class="k">Élève</td>
+                <td th:text="${studentName}">NOM Prénom</td>
+            </tr>
+            <tr>
+                <td class="k">Matricule</td>
+                <td th:text="${matricule}">—</td>
+            </tr>
+            <tr>
+                <td class="k">Année scolaire</td>
+                <td th:text="${schoolYearLabel}">—</td>
+            </tr>
+        </table>
+
+        <table class="data-table" cellspacing="0">
+            <thead>
+            <tr>
+                <th>Détail des frais</th>
+                <th class="amt">Montant</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${receiptLineRows}">
+                <td th:text="${row['label']}">Ligne</td>
+                <td class="amt" th:text="${row['amount']}">0 GNF</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div class="total-words">
+            <div class="tw-label">Arrêté le présent reçu à la somme de (montant en lettres)</div>
+            <div class="tw-text" th:text="${totalInWords}">Mille deux cents francs guinéens</div>
+        </div>
+        <div class="total-row">
+            <span>Montant total : </span>
+            <span class="total-num" th:text="${totalAmount}">0 GNF</span>
+        </div>
+        <div class="mode-row">
+            <strong>Mode de paiement :</strong> <span th:text="${paymentMode}">Espèces</span>
+        </div>
+        <p style="margin-top: 12px; font-size: 9.5pt; color: #4b5563;">
+            <strong>Payé par :</strong> <span th:text="${recordedBy}">—</span>
+        </p>
+
+        <table class="footer-table" cellspacing="0" cellpadding="0">
+            <tr>
+                <td>
+                    <div class="sig-box">
+                        <div class="sig-title">Le comptable</div>
+                        <div class="sig-line">Signature</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="sig-box">
+                        <div class="sig-title">L’établissement</div>
+                        <div class="sig-line">Signature / Tampon</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+</body>
+</html>

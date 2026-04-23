@@ -19,7 +19,7 @@ import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.IStudentAccountRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
-import lombok.AllArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +40,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
 public class FinanceService {
 
     private static final List<String> MONTHS_OCT_TO_JUN = List.of("OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR", "MAY", "JUN");
@@ -53,6 +52,27 @@ public class FinanceService {
     private final IFeeStructureRepository feeStructureRepository;
     private final SchoolService schoolService;
     private final UserRepository userRepository;
+    private final PaymentConfirmationMailService paymentConfirmationMailService;
+
+    public FinanceService(
+        ISchoolClassRepository schoolClassRepository,
+        IStudentRepository studentRepository,
+        IStudentAccountRepository studentAccountRepository,
+        IPaymentRepository paymentRepository,
+        IFeeStructureRepository feeStructureRepository,
+        SchoolService schoolService,
+        UserRepository userRepository,
+        @Lazy PaymentConfirmationMailService paymentConfirmationMailService
+    ) {
+        this.schoolClassRepository = schoolClassRepository;
+        this.studentRepository = studentRepository;
+        this.studentAccountRepository = studentAccountRepository;
+        this.paymentRepository = paymentRepository;
+        this.feeStructureRepository = feeStructureRepository;
+        this.schoolService = schoolService;
+        this.userRepository = userRepository;
+        this.paymentConfirmationMailService = paymentConfirmationMailService;
+    }
 
     @Transactional(readOnly = true)
     public List<StudentPaymentLedgerRowDTO> listPaymentLedgerForStudent(Long studentId) {
@@ -406,7 +426,7 @@ public class FinanceService {
             }
         }
 
-        return new CreatePaymentResponse(
+        var response = new CreatePaymentResponse(
             studentId,
             info.schoolClassId(),
             totalCollected,
@@ -415,6 +435,11 @@ public class FinanceService {
             recordedBy,
             List.copyOf(receiptLines)
         );
+        final double totalMail = totalCollected;
+        final String receiptForMail = receiptRef;
+        studentRepository.findByIdWithParentsAndClass(studentId)
+            .ifPresent(s -> paymentConfirmationMailService.sendPaymentConfirmation(s, receiptForMail, totalMail));
+        return response;
     }
 
     @Transactional(readOnly = true)
