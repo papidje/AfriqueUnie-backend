@@ -7,7 +7,7 @@ import friasoft.gn.schoolapp.entity.school.Student;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,15 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class StudentService implements IStudentService {
 
     private final IStudentRepository repository;
     private final ISchoolClassRepository schoolClassRepository;
     private final SchoolService schoolService;
     private final UserRepository userRepository;
+    private final TeacherTimetableAccessService teacherTimetableAccessService;
 
     private static User currentUser() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
@@ -51,6 +53,14 @@ public class StudentService implements IStudentService {
     @Override
     public Page<Student> findAll(Pageable pageable) {
         User user = currentUser();
+        Optional<Set<Long>> teacherClassIds = teacherTimetableAccessService.allowedSchoolClassIdsForCurrentUser();
+        if (teacherClassIds.isPresent()) {
+            Set<Long> ids = teacherClassIds.get();
+            if (ids.isEmpty()) {
+                return Page.empty(pageable);
+            }
+            return repository.findAllBySchoolClassIdIn(ids, pageable);
+        }
         if (user.getRole() == User.UserRole.DIRECTOR) {
             Long sid = userRepository.findSchoolIdByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("École assignée manquante pour le directeur."));
@@ -62,9 +72,12 @@ public class StudentService implements IStudentService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Student> findById(Long id) {
-        Optional<Student> opt = repository.findByIdWithParentsAndClass(id);
-        opt.ifPresent(this::assertSchoolAccess);
-        return opt;
+        return repository.findByIdWithParentsAndClass(id)
+            .map(s -> {
+                assertSchoolAccess(s);
+                return s;
+            })
+            .filter(teacherTimetableAccessService::isStudentVisibleInTeacherView);
     }
 
     @Override
@@ -141,6 +154,7 @@ public class StudentService implements IStudentService {
         Student student = repository.findByIdWithParentsAndClass(studentId)
             .orElseThrow(() -> new IllegalArgumentException("Élève introuvable."));
         assertSchoolAccess(student);
+        teacherTimetableAccessService.assertCurrentTeacherCanViewStudentOrElseForbidden(student);
         return student;
     }
 
@@ -169,6 +183,19 @@ public class StudentService implements IStudentService {
     public List<Student> searchByLastName(String lastName) {
         User user = currentUser();
         List<Student> all = repository.findByLastNameContainingIgnoreCase(lastName);
+        if (user.getRole() == User.UserRole.TEACHER) {
+            Optional<Set<Long>> tClasses = teacherTimetableAccessService.allowedSchoolClassIdsForCurrentUser();
+            if (tClasses.isPresent()) {
+                Set<Long> set = tClasses.get();
+                if (set.isEmpty()) {
+                    return List.of();
+                }
+                return all.stream()
+                    .filter(st -> st.getSchoolClass() != null && st.getSchoolClass().getId() != null
+                        && set.contains(st.getSchoolClass().getId()))
+                    .toList();
+            }
+        }
         if (user.getRole() != User.UserRole.DIRECTOR) {
             return all;
         }
@@ -193,6 +220,7 @@ public class StudentService implements IStudentService {
         var sc = schoolClassRepository.findByIdWithYearAndSchool(classId)
             .orElseThrow(() -> new IllegalArgumentException("SchoolClass introuvable."));
         schoolService.assertCurrentUserCanAccessSchool(sc.getYear().getSchool().getId());
+        teacherTimetableAccessService.assertCurrentTeacherCanAccessClassOrElseForbidden(classId);
         return repository.findBySchoolClass_Id(classId);
     }
 }

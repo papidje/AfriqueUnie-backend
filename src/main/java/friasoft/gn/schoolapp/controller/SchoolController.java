@@ -24,7 +24,7 @@ public class SchoolController {
     private final SchoolService schoolService;
     private final FileStorageService fileStorageService;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     @PostMapping
     public ResponseEntity<School> create(@RequestBody School school) {
         log.info("creation école");
@@ -32,19 +32,19 @@ public class SchoolController {
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE', 'DIRECTOR', 'STAFF', 'TEACHER', 'ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR', 'STAFF', 'TEACHER', 'ACCOUNTANT')")
     @GetMapping
     public List<School> getSchools() {
         return this.schoolService.listForAuthenticatedUser();
     }
 
-    @PreAuthorize("@schoolSecurity.checkUserSchool(authentication, #schoolId)")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR') and @schoolSecurity.checkUserSchool(authentication, #schoolId)")
     @PutMapping("/{schoolId}")
     public School updateSchool(@PathVariable Long schoolId, @RequestBody School dto) {
         return schoolService.update(schoolId, dto);
     }
 
-    @PreAuthorize("@schoolSecurity.checkUserSchool(authentication, #schoolId)")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR') and @schoolSecurity.checkUserSchool(authentication, #schoolId)")
     @PatchMapping(value = "/{schoolId}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public School uploadLogo(@PathVariable Long schoolId, @RequestPart("file") MultipartFile file) {
         School existing = schoolService.getSchool(schoolId);
@@ -52,13 +52,13 @@ public class SchoolController {
         return schoolService.updateLogoPath(schoolId, path);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     @DeleteMapping("/{schoolId}")
     public void deleteSchool(@PathVariable Long schoolId) {
         schoolService.delete(schoolId);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     @PatchMapping("/{schoolId}/active/{active}")
     public void activateSchool(@PathVariable Long schoolId, @PathVariable boolean active) {
         schoolService.activate(schoolId, active);

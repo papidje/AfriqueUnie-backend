@@ -50,7 +50,7 @@ public class ConfigurationSecurityApplication {
                 .authorizeHttpRequests(authorize -> authorize
                     // Auth endpoints
                     .requestMatchers("/auth/**").permitAll()
-                    // Fichiers statiques uploadés (photos élèves)
+                    // Fichiers publics (logos, photos) — requis pour <img src="…/api/rest/uploads/…"> sans en-tête Authorization
                     .requestMatchers("/uploads/**").permitAll()
                     // Super admin (context-path /api/rest en préfixe réel)
                     .requestMatchers("/super-admin/**").hasRole("SUPER_ADMIN")

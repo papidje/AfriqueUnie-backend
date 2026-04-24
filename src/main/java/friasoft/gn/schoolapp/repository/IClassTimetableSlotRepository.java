@@ -27,4 +27,15 @@ public interface IClassTimetableSlotRepository extends JpaRepository<ClassTimeta
     );
 
     void deleteBySchoolClass_IdAndDayOfWeekAndSlotIndex(Long classId, Integer dayOfWeek, Integer slotIndex);
+
+    /**
+     * Classes où l'enseignant a au moins un créneau (emploi du temps) sur une
+     * {@link friasoft.gn.schoolapp.entity.school.ClassSubject} qui lui est assignée.
+     */
+    @Query("""
+        select distinct t.schoolClass.id
+        from ClassTimetableSlot t
+        where t.classSubject.teacher.id = :teacherUserId
+        """)
+    List<Long> findDistinctSchoolClassIdsByTeacherUserId(@Param("teacherUserId") Long teacherUserId);
 }

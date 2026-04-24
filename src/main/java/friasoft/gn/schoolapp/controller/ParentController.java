@@ -21,7 +21,7 @@ public class ParentController {
 
     private final ParentService parentService;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping("/by-school/{schoolId}/active-year-enrolled")
     public List<ParentSchoolListRow> listForSchoolActiveYear(@PathVariable Long schoolId) {
         try {
@@ -31,7 +31,7 @@ public class ParentController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/by-phone")
     public ResponseEntity<ParentResponse> findByPhone(@RequestParam String phone) {
         try {
@@ -44,7 +44,7 @@ public class ParentController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/{id}")
     public ResponseEntity<ParentResponse> getById(@PathVariable Long id) {
         return parentService.findById(id)
@@ -53,7 +53,7 @@ public class ParentController {
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PutMapping("/{id}")
     public ResponseEntity<ParentResponse> update(@PathVariable Long id, @RequestBody ParentWriteRequest body) {
         try {
@@ -64,7 +64,7 @@ public class ParentController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PostMapping
     public ResponseEntity<ParentResponse> create(@RequestBody ParentWriteRequest body) {
         try {

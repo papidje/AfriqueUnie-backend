@@ -28,6 +28,15 @@ public class School {
     private String contact;
     private Date openDate;
     private String logo;
+
+    /** Clé thème front (ex. classique, emeraude, bordeaux) — white label. */
+    @Column(name = "theme_name", length = 64)
+    private String themeName = "classique";
+
+    /** Clé police (ex. inter, montserrat) — white label. */
+    @Column(name = "font_name", length = 64)
+    private String fontName = "inter";
+
     private boolean isActive = false;
     private Instant created_at;
     private Instant updated_at;

@@ -46,7 +46,7 @@ public class UserService implements UserDetailsService{
      * Réservé aux comptes encore inactifs (invitation non finalisée).
      */
     @Transactional
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'SUPER_ADMIN', 'DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     public void resendActivationEmail(Long userId) {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identifiant utilisateur obligatoire.");
@@ -68,7 +68,7 @@ public class UserService implements UserDetailsService{
     }
 
     @Transactional(readOnly = true)
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'SUPER_ADMIN', 'DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     public List<User> getAll() {
         User current = getUserInfo();
         if (current == null) {
@@ -87,12 +87,8 @@ public class UserService implements UserDetailsService{
                 .toList();
         }
         return this.userRepository.findAll().stream()
-            // Ne jamais exposer les comptes super admin dans la gestion tenant.
             .filter(u -> u.getRole() != User.UserRole.SUPER_ADMIN)
             .filter(u -> {
-                if (current.getRole() == User.UserRole.SUPER_ADMIN) {
-                    return true;
-                }
                 Long tenantId = current.getOrganizationTenantId() != null
                     ? current.getOrganizationTenantId()
                     : current.getTenantId();

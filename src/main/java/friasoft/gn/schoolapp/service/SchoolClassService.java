@@ -10,7 +10,7 @@ import friasoft.gn.schoolapp.repository.IClassSubjectRepository;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.ISchoolYearRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +18,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class SchoolClassService {
 
     private final ISchoolClassRepository repository;
@@ -29,6 +31,7 @@ public class SchoolClassService {
     private final IStudentRepository studentRepository;
     private final IClassSubjectRepository classSubjectRepository;
     private final SchoolService schoolService;
+    private final TeacherTimetableAccessService teacherTimetableAccessService;
 
     @Transactional
     public SchoolClass save(SchoolClass schoolClass) {
@@ -62,17 +65,19 @@ public class SchoolClassService {
     }
 
     public Optional<SchoolClass> findById(Long id) {
-        return repository.findByIdWithYearAndSchool(id).map(sc -> {
-            schoolService.assertCurrentUserCanAccessSchool(sc.getYear().getSchool().getId());
-            return sc;
-        });
+        return repository.findByIdWithYearAndSchool(id)
+            .map(sc -> {
+                schoolService.assertCurrentUserCanAccessSchool(sc.getYear().getSchool().getId());
+                return sc;
+            })
+            .filter(this::isSchoolClassVisibleToTeacherIfApplicable);
     }
 
     public List<SchoolClass> findByYear(Long yearId) {
         SchoolYear year = schoolYearRepository.findByIdWithSchool(yearId)
             .orElseThrow(() -> new IllegalArgumentException("Année scolaire introuvable."));
         schoolService.assertCurrentUserCanAccessSchool(year.getSchool().getId());
-        return repository.findByYear_Id(yearId);
+        return filterClassesForTeacher(repository.findByYear_Id(yearId));
     }
 
     /**
@@ -82,13 +87,15 @@ public class SchoolClassService {
     @Transactional(readOnly = true)
     public List<SchoolClass> listForActiveSchoolYear(Long schoolId) {
         schoolService.assertCurrentUserCanAccessSchool(schoolId);
-        return repository.findByYear_School_IdAndYear_ActiveTrue(schoolId);
+        return filterClassesForTeacher(repository.findByYear_School_IdAndYear_ActiveTrue(schoolId));
     }
 
     @Transactional(readOnly = true)
     public List<SchoolClassOverviewResponse> listOverviewForActiveSchoolYear(Long schoolId) {
         schoolService.assertCurrentUserCanAccessSchool(schoolId);
-        List<SchoolClass> classes = repository.findByYear_School_IdAndYear_ActiveTrue(schoolId);
+        List<SchoolClass> classes = filterClassesForTeacher(
+            repository.findByYear_School_IdAndYear_ActiveTrue(schoolId)
+        );
         if (classes.isEmpty()) {
             return List.of();
         }
@@ -102,6 +109,32 @@ public class SchoolClassService {
                 subjectsByClass.getOrDefault(sc.getId(), 0L)
             ))
             .toList();
+    }
+
+    private List<SchoolClass> filterClassesForTeacher(List<SchoolClass> classes) {
+        Optional<Set<Long>> allowed = teacherTimetableAccessService.allowedSchoolClassIdsForCurrentUser();
+        if (allowed.isEmpty()) {
+            return classes;
+        }
+        Set<Long> ids = allowed.get();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return classes.stream()
+            .filter(c -> c.getId() != null && ids.contains(c.getId()))
+            .collect(Collectors.toList());
+    }
+
+    private boolean isSchoolClassVisibleToTeacherIfApplicable(SchoolClass sc) {
+        Optional<Set<Long>> allowed = teacherTimetableAccessService.allowedSchoolClassIdsForCurrentUser();
+        if (allowed.isEmpty()) {
+            return true;
+        }
+        Set<Long> ids = allowed.get();
+        if (ids.isEmpty()) {
+            return false;
+        }
+        return sc.getId() != null && ids.contains(sc.getId());
     }
 
     private static Map<Long, Long> toCountMap(List<Object[]> rows) {

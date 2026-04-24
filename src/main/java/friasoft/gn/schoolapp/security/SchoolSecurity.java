@@ -25,8 +25,9 @@ public class SchoolSecurity {
      * DIRECTOR / STAFF / TEACHER / ACCOUNTANT : uniquement {@link User#getSchool()} lorsqu’il est renseigné.
      */
     public boolean canAccessSchool(User user, School school) {
+        // Le super-admin n’accède pas aux données d’établissement via les API école (uniquement /super-admin).
         if (user.getRole() == User.UserRole.SUPER_ADMIN) {
-            return true;
+            return false;
         }
         if (user.getRole() == User.UserRole.DIRECTOR) {
             return user.getSchool() != null && user.getSchool().getId().equals(school.getId());

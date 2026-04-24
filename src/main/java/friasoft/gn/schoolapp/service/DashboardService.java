@@ -113,12 +113,6 @@ public class DashboardService {
             || user.getRole() == User.UserRole.TEACHER
             || user.getRole() == User.UserRole.ACCOUNTANT;
 
-        if (user.getRole() == User.UserRole.SUPER_ADMIN) {
-            if (requestedSchoolId == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paramètre schoolId obligatoire.");
-            }
-            return requestedSchoolId;
-        }
         if (requestedSchoolId != null) {
             if (user.getRole() == User.UserRole.DIRECTOR) {
                 Long directorSchool = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);

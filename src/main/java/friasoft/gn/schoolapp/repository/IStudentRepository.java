@@ -85,6 +85,20 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
     )
     Page<Student> findAllBySchoolId(@Param("schoolId") Long schoolId, Pageable pageable);
 
+    @Query(
+        value = """
+            select s from Student s
+            join s.schoolClass sc
+            where sc.id in :classIds
+            """,
+        countQuery = """
+            select count(s) from Student s
+            join s.schoolClass sc
+            where sc.id in :classIds
+            """
+    )
+    Page<Student> findAllBySchoolClassIdIn(@Param("classIds") Collection<Long> classIds, Pageable pageable);
+
     @Query("""
         select distinct s from Student s
         left join fetch s.father

@@ -18,32 +18,32 @@ public class FeeStructureController {
 
     private final FeeStructureService feeStructureService;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping
     public List<FeeStructureResponse> listBySchoolYear(@RequestParam Long schoolYearId) {
         return feeStructureService.listBySchoolYear(schoolYearId);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping("/{id}")
     public FeeStructureResponse getById(@PathVariable Long id) {
         return feeStructureService.getById(id);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
     @PostMapping
     public ResponseEntity<FeeStructureResponse> create(@RequestBody FeeStructureRequest request) {
         FeeStructureResponse created = feeStructureService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
     @PutMapping("/{id}")
     public FeeStructureResponse update(@PathVariable Long id, @RequestBody FeeStructureRequest request) {
         return feeStructureService.update(id, request);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         feeStructureService.delete(id);

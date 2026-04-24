@@ -34,13 +34,13 @@ public class StudentController {
     private final FileStorageService fileStorageService;
     private final StudentDocumentService studentDocumentService;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT','TEACHER')")
     @GetMapping
     public Page<StudentResponse> getAll(Pageable pageable) {
         return service.findAll(pageable).map(mapper::toDto);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT','TEACHER')")
     @GetMapping("/{id}")
     public ResponseEntity<StudentDetailResponse> getById(@PathVariable Long id) {
         return service.findById(id)
@@ -49,7 +49,7 @@ public class StudentController {
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT','TEACHER')")
     @GetMapping("/by-class/{classId}")
     public List<StudentResponse> getByClass(@PathVariable Long classId) {
         try {
@@ -59,14 +59,14 @@ public class StudentController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
     @PostMapping
     public ResponseEntity<StudentResponse> create(@RequestBody StudentResponse dto) {
         Student saved = service.save(mapper.toEntity(dto));
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toDto(saved));
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PutMapping("/{id}")
     public ResponseEntity<StudentDetailResponse> updateProfile(
         @PathVariable Long id,
@@ -83,7 +83,7 @@ public class StudentController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PatchMapping("/{id}")
     public ResponseEntity<StudentDetailResponse> patchStudent(
         @PathVariable Long id,
@@ -100,7 +100,7 @@ public class StudentController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PatchMapping(value = "/{id}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<StudentDetailResponse> uploadPhoto(@PathVariable Long id, @RequestPart("file") MultipartFile file) {
         var existing = service.findById(id);
@@ -112,7 +112,7 @@ public class StudentController {
         return ResponseEntity.ok(mapper.toDetailDto(updated));
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
     @GetMapping(value = "/{id}/documents/enrollment-certificate", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> generateEnrollmentCertificate(@PathVariable Long id) {
         try {
@@ -128,7 +128,7 @@ public class StudentController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @DeleteMapping("/{id}/father")
     public ResponseEntity<Void> unlinkFather(@PathVariable Long id) {
         if (service.findById(id).isEmpty()) {
@@ -138,7 +138,7 @@ public class StudentController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @DeleteMapping("/{id}/mother")
     public ResponseEntity<Void> unlinkMother(@PathVariable Long id) {
         if (service.findById(id).isEmpty()) {
@@ -148,7 +148,7 @@ public class StudentController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

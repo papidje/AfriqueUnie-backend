@@ -120,6 +120,14 @@ public class JwtService {
                 claims.put("header_title", headerTitle);
             }
         }
+        if (user.getSchool() != null) {
+            if (user.getSchool().getThemeName() != null && !user.getSchool().getThemeName().isBlank()) {
+                claims.put("school_theme", user.getSchool().getThemeName().trim());
+            }
+            if (user.getSchool().getFontName() != null && !user.getSchool().getFontName().isBlank()) {
+                claims.put("school_font", user.getSchool().getFontName().trim());
+            }
+        }
         final String bearer = Jwts.builder()
             .issuedAt(new Date(currentTime))
             .expiration(new Date(expirationTime))

@@ -28,7 +28,7 @@ public class SchoolService {
     public List<School> listForAuthenticatedUser() {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (user.getRole() == User.UserRole.SUPER_ADMIN) {
-            return getAll();
+            return List.of();
         }
         if (user.getRole() == User.UserRole.DIRECTOR) {
             if (user.getSchool() == null || user.getSchool().getId() == null) {
@@ -78,8 +78,13 @@ public class SchoolService {
             }
             school.setTenantId(tid);
             school.setActive(false);
-        } else if (user.getRole() == User.UserRole.SUPER_ADMIN) {
-            // Le corps peut contenir tenant_id ; sinon création « sans tenant » (usage limité).
+        } else if (user.getRole() == User.UserRole.DIRECTOR) {
+            School own = user.getSchool();
+            if (own == null || own.getTenantId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Établissement ou tenant directeur introuvable.");
+            }
+            school.setTenantId(own.getTenantId());
+            school.setActive(false);
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
@@ -107,6 +112,12 @@ public class SchoolService {
         school.setContact(dto.getContact());
         // Le logo est géré uniquement via l’upload (PATCH /schools/{id}/logo).
         school.setOpenDate(dto.getOpenDate());
+        if (dto.getThemeName() != null) {
+            school.setThemeName(dto.getThemeName().trim().isEmpty() ? "classique" : dto.getThemeName().trim());
+        }
+        if (dto.getFontName() != null) {
+            school.setFontName(dto.getFontName().trim().isEmpty() ? "inter" : dto.getFontName().trim());
+        }
         school.setUpdated_at(Instant.now());
         return this.schoolRepository.save(school);
     }

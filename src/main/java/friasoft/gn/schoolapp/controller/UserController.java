@@ -10,6 +10,7 @@ import friasoft.gn.schoolapp.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -25,6 +26,7 @@ public class UserController {
     private UserService userService;
     private SchoolService schoolService;
 
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     @GetMapping()
     public List<UserResponse> getAll() {
         return this.userService
@@ -34,12 +36,14 @@ public class UserController {
             .toList();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/userInfo")
     public UserResponse getUserInfo() {
         return this.mapToUserResponse(this.userService.getUserInfo());
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/change-password")
     public void changePassword(@RequestBody ChangePasswordRequest body) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
@@ -49,6 +53,7 @@ public class UserController {
         this.userService.changeOwnPassword(user, body.currentPassword(), body.newPassword());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
     @GetMapping("/admins-by-school/{schoolId}")
     public List<UserResponse> getAdminsBySchool(@PathVariable Long schoolId) {
         this.schoolService.assertCurrentUserCanAccessSchool(schoolId);
@@ -59,6 +64,7 @@ public class UserController {
             .toList();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     @GetMapping("/search-admins/{term}")
     public List<UserResponse> getAdminsBySchool(@PathVariable String term) {
         return this
@@ -69,6 +75,7 @@ public class UserController {
     }
 
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     @PostMapping("/invite")
     public InviteUserResponse inviteUser(@RequestBody InviteUserDTO body) {
         String code = this.userService.inviteUser(body);
@@ -76,6 +83,7 @@ public class UserController {
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     @PostMapping("/{userId}/resend-activation")
     public void resendActivation(@PathVariable Long userId) {
         this.userService.resendActivationEmail(userId);

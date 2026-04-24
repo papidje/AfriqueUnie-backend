@@ -5,11 +5,15 @@ import friasoft.gn.schoolapp.service.SchoolService;
 import friasoft.gn.schoolapp.service.SchoolYearService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+
+import static friasoft.gn.schoolapp.security.SchoolUiSecurityExpressions.READ;
+import static friasoft.gn.schoolapp.security.SchoolUiSecurityExpressions.WRITE;
 
 @RestController
 @RequestMapping("/api/school-years")
@@ -19,6 +23,7 @@ public class SchoolYearController {
     private final SchoolYearService service;
     private final SchoolService schoolService;
 
+    @PreAuthorize(READ)
     @GetMapping("/{id}")
     public ResponseEntity<SchoolYear> getById(@PathVariable Long id) {
         return service.findById(id)
@@ -29,6 +34,7 @@ public class SchoolYearController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize(READ)
     @GetMapping("/school/{schoolId}")
     public List<SchoolYear> getBySchool(@PathVariable Long schoolId) {
         schoolService.assertCurrentUserCanAccessSchool(schoolId);
@@ -36,6 +42,7 @@ public class SchoolYearController {
     }
 
     /** Année scolaire active pour l’établissement (après contrôle d’accès tenant). */
+    @PreAuthorize(READ)
     @GetMapping("/school/{schoolId}/active")
     public ResponseEntity<SchoolYear> getActiveForSchool(@PathVariable Long schoolId) {
         schoolService.assertCurrentUserCanAccessSchool(schoolId);
@@ -44,6 +51,7 @@ public class SchoolYearController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize(WRITE)
     @PostMapping
     public ResponseEntity<SchoolYear> create(@RequestBody SchoolYear year) {
         if (year.getSchool() == null || year.getSchool().getId() == null) {
@@ -57,6 +65,7 @@ public class SchoolYearController {
         }
     }
 
+    @PreAuthorize(WRITE)
     @PutMapping("/{id}")
     public ResponseEntity<SchoolYear> update(@PathVariable Long id, @RequestBody SchoolYear year) {
         return service.findById(id)
@@ -77,6 +86,7 @@ public class SchoolYearController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize(WRITE)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         return service.findById(id)
