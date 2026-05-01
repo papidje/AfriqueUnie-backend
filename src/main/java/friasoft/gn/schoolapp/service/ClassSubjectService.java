@@ -26,6 +26,7 @@ public class ClassSubjectService {
     private final IClassSubjectRepository classSubjectRepository;
     private final ISchoolClassRepository schoolClassRepository;
     private final ISubjectRepository subjectRepository;
+    private final SubjectService subjectService;
     private final UserRepository userRepository;
     private final SchoolService schoolService;
 
@@ -63,6 +64,7 @@ public class ClassSubjectService {
         }
         Subject subject = subjectRepository.findById(request.subjectId())
             .orElseThrow(() -> new IllegalArgumentException("Matière introuvable."));
+        subjectService.assertSubjectAssignableToSchool(subject, clazz.getYear().getSchool().getId());
         if (classSubjectRepository.findBySchoolClass_IdAndSubject_Id(classId, subject.getId()).isPresent()) {
             throw new IllegalArgumentException("Cette matière est déjà affectée à la classe.");
         }

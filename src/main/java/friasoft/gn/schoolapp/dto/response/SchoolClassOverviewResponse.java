@@ -1,6 +1,7 @@
 package friasoft.gn.schoolapp.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import friasoft.gn.schoolapp.entity.school.PeriodType;
 
 /**
  * Liste classes année active : identité + effectif inscrit + nombre de matières affectées.
@@ -10,6 +11,7 @@ public record SchoolClassOverviewResponse(
     Long id,
     String name,
     Integer capacity,
+    PeriodType periodType,
     SchoolYearRef year,
     ClassLevelRef level,
     long enrolledStudentCount,

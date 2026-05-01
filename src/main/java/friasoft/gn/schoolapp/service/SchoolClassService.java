@@ -3,6 +3,7 @@ package friasoft.gn.schoolapp.service;
 import friasoft.gn.schoolapp.dto.response.SchoolClassOverviewResponse;
 import friasoft.gn.schoolapp.entity.school.ClassLevel;
 import friasoft.gn.schoolapp.entity.school.ClassLevelGroup;
+import friasoft.gn.schoolapp.entity.school.PeriodType;
 import friasoft.gn.schoolapp.entity.school.SchoolClass;
 import friasoft.gn.schoolapp.entity.school.SchoolYear;
 import friasoft.gn.schoolapp.repository.IClassLevelRepository;
@@ -32,9 +33,11 @@ public class SchoolClassService {
     private final IClassSubjectRepository classSubjectRepository;
     private final SchoolService schoolService;
     private final TeacherTimetableAccessService teacherTimetableAccessService;
+    private final GradingPeriodService gradingPeriodService;
 
     @Transactional
     public SchoolClass save(SchoolClass schoolClass) {
+        boolean isNew = schoolClass.getId() == null;
         if (schoolClass.getYear() == null || schoolClass.getYear().getId() == null) {
             throw new IllegalArgumentException("year.id est obligatoire.");
         }
@@ -60,8 +63,15 @@ public class SchoolClassService {
         if (schoolClass.getCapacity() == null || schoolClass.getCapacity() < 1) {
             schoolClass.setCapacity(40);
         }
+        if (schoolClass.getPeriodType() == null) {
+            schoolClass.setPeriodType(PeriodType.TRIMESTER);
+        }
 
-        return repository.save(schoolClass);
+        SchoolClass saved = repository.save(schoolClass);
+        if (isNew) {
+            gradingPeriodService.createForNewClass(saved, year);
+        }
+        return saved;
     }
 
     public Optional<SchoolClass> findById(Long id) {
@@ -168,10 +178,12 @@ public class SchoolClassService {
             yearRef = new SchoolClassOverviewResponse.SchoolYearRef(y.getId(), y.getLabel());
         }
         Integer cap = sc.getCapacity() != null ? sc.getCapacity() : 40;
+        PeriodType pt = sc.getPeriodType() != null ? sc.getPeriodType() : PeriodType.TRIMESTER;
         return new SchoolClassOverviewResponse(
             sc.getId(),
             sc.getName(),
             cap,
+            pt,
             yearRef,
             levelRef,
             enrolled,

@@ -1,6 +1,7 @@
 package friasoft.gn.schoolapp.service;
 
 import friasoft.gn.schoolapp.dto.TimetableDtos.TimetableCellWriteDto;
+import friasoft.gn.schoolapp.dto.TimetableDtos.TimetableEvaluationDto;
 import friasoft.gn.schoolapp.dto.TimetableDtos.TimetableSlotDto;
 import friasoft.gn.schoolapp.dto.TimetableDtos.TimetableViewDto;
 import friasoft.gn.schoolapp.entity.school.ClassSubject;
@@ -13,6 +14,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -28,15 +30,25 @@ public class ClassTimetableService {
     private final ISchoolClassRepository schoolClassRepository;
     private final IClassSubjectRepository classSubjectRepository;
     private final SchoolService schoolService;
+    private final EvaluationService evaluationService;
 
     @Transactional(readOnly = true)
     public TimetableViewDto getTimetable(Long classId) {
+        return getTimetable(classId, null, false);
+    }
+
+    @Transactional(readOnly = true)
+    public TimetableViewDto getTimetable(Long classId, LocalDate weekStart, boolean includeEvaluations) {
         SchoolClass clazz = loadClassForAccess(classId);
         assertAccess(clazz);
         List<TimetableSlotDto> slots = timetableSlotRepository.findBySchoolClassIdWithSubject(classId).stream()
             .map(this::toDto)
             .toList();
-        return new TimetableViewDto(classId, slots);
+        List<TimetableEvaluationDto> evals = List.of();
+        if (includeEvaluations && weekStart != null) {
+            evals = evaluationService.listForTimetableWeek(classId, weekStart);
+        }
+        return new TimetableViewDto(classId, slots, evals);
     }
 
     @Transactional
@@ -69,7 +81,7 @@ public class ClassTimetableService {
         entity.setSlotIndex(slot);
         entity.setClassSubject(cs);
         timetableSlotRepository.save(entity);
-        return getTimetable(classId);
+        return getTimetable(classId, null, false);
     }
 
     private SchoolClass loadClassForAccess(Long classId) {

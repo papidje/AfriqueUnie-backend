@@ -47,6 +47,7 @@ public class StudentMapper {
             .tutorEmail(student.getTutorEmail())
             .photoPath(student.getPhotoPath())
             .classHistory(student.getClassHistory())
+            .schoolClassId(student.getSchoolClass() != null ? student.getSchoolClass().getId() : null)
             .schoolClassName(student.getSchoolClass() != null ? student.getSchoolClass().getName() : null)
             .schoolYearLabel(
                 student.getSchoolClass() != null && student.getSchoolClass().getYear() != null

@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.storage;
 
+import friasoft.gn.schoolapp.config.AppUploadRoot;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -7,19 +8,23 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Service
 public class FileStorageService {
 
-    private static final Path PHOTOS_DIR = Paths.get("./uploads/photos").toAbsolutePath().normalize();
     private static final String PHOTO_WEB_PREFIX = "/uploads/photos/";
-
-    private static final Path LOGOS_DIR = Paths.get("./uploads/logos").toAbsolutePath().normalize();
     private static final String LOGO_WEB_PREFIX = "/uploads/logos/";
     private static final int SCHOOL_LOGO_MAX_SIDE = 500;
+
+    private final Path photosDir;
+    private final Path logosDir;
+
+    public FileStorageService(AppUploadRoot appUploadRoot) {
+        this.photosDir = appUploadRoot.photosPath();
+        this.logosDir = appUploadRoot.logosPath();
+    }
 
     public String storeStudentPhoto(Long studentId, MultipartFile photo) {
         return storeStudentPhoto(studentId, photo, null);
@@ -30,9 +35,9 @@ public class FileStorageService {
             throw new IllegalArgumentException("Aucun fichier photo transmis.");
         }
         try {
-            Files.createDirectories(PHOTOS_DIR);
+            Files.createDirectories(photosDir);
             String filename = "student-" + studentId + "-" + UUID.randomUUID().toString().replace("-", "") + ".jpg";
-            Path target = PHOTOS_DIR.resolve(filename).normalize();
+            Path target = photosDir.resolve(filename).normalize();
             Path temp = Files.createTempFile("student-photo-", ".tmp");
             Files.copy(photo.getInputStream(), temp, StandardCopyOption.REPLACE_EXISTING);
             Thumbnails.of(temp.toFile())
@@ -59,8 +64,8 @@ public class FileStorageService {
         if (filename.isBlank() || filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
             return;
         }
-        Path previous = PHOTOS_DIR.resolve(filename).normalize();
-        if (!previous.getParent().equals(PHOTOS_DIR)) {
+        Path previous = photosDir.resolve(filename).normalize();
+        if (!previous.getParent().equals(photosDir)) {
             return;
         }
         try {
@@ -79,9 +84,9 @@ public class FileStorageService {
             throw new IllegalArgumentException("Aucun fichier logo transmis.");
         }
         try {
-            Files.createDirectories(LOGOS_DIR);
+            Files.createDirectories(logosDir);
             String filename = "school-" + schoolId + "-" + UUID.randomUUID().toString().replace("-", "") + ".jpg";
-            Path target = LOGOS_DIR.resolve(filename).normalize();
+            Path target = logosDir.resolve(filename).normalize();
             Path temp = Files.createTempFile("school-logo-", ".tmp");
             Files.copy(logo.getInputStream(), temp, StandardCopyOption.REPLACE_EXISTING);
             Thumbnails.of(temp.toFile())
@@ -108,8 +113,8 @@ public class FileStorageService {
         if (filename.isBlank() || filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
             return;
         }
-        Path previous = LOGOS_DIR.resolve(filename).normalize();
-        if (!previous.getParent().equals(LOGOS_DIR)) {
+        Path previous = logosDir.resolve(filename).normalize();
+        if (!previous.getParent().equals(logosDir)) {
             return;
         }
         try {

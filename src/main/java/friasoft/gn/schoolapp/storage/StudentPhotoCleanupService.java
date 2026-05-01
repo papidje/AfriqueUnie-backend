@@ -1,6 +1,7 @@
 package friasoft.gn.schoolapp.storage;
 
 import friasoft.gn.schoolapp.repository.IStudentRepository;
+import friasoft.gn.schoolapp.config.AppUploadRoot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -20,17 +20,18 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class StudentPhotoCleanupService {
 
-    private static final Path PHOTOS_DIR = Paths.get("./uploads/photos").toAbsolutePath().normalize();
     private static final String PHOTO_WEB_PREFIX = "/uploads/photos/";
 
+    private final AppUploadRoot appUploadRoot;
     private final IStudentRepository studentRepository;
 
     /** Nettoyage quotidien des photos orphelines à 03:00. */
     @Scheduled(cron = "0 0 3 * * *")
     @Transactional(readOnly = true)
     public void cleanupOrphanPhotos() {
+        Path photosDir = appUploadRoot.photosPath();
         try {
-            Files.createDirectories(PHOTOS_DIR);
+            Files.createDirectories(photosDir);
         } catch (IOException e) {
             log.warn("Impossible d'initialiser le dossier photos: {}", e.getMessage());
             return;
@@ -42,7 +43,7 @@ public class StudentPhotoCleanupService {
             .collect(Collectors.toSet());
 
         int deleted = 0;
-        try (Stream<Path> stream = Files.list(PHOTOS_DIR)) {
+        try (Stream<Path> stream = Files.list(photosDir)) {
             for (Path file : stream.toList()) {
                 if (!Files.isRegularFile(file)) {
                     continue;

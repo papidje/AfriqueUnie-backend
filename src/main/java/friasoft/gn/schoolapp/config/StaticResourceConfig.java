@@ -5,14 +5,19 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @Configuration
 public class StaticResourceConfig implements WebMvcConfigurer {
 
+    private final AppUploadRoot appUploadRoot;
+
+    public StaticResourceConfig(AppUploadRoot appUploadRoot) {
+        this.appUploadRoot = appUploadRoot;
+    }
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path uploadRoot = Paths.get("./uploads").toAbsolutePath().normalize();
+        Path uploadRoot = appUploadRoot.getRoot();
         registry.addResourceHandler("/uploads/**")
             .addResourceLocations("file:" + uploadRoot + "/");
     }

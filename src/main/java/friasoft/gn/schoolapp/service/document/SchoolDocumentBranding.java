@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.service.document;
 
+import friasoft.gn.schoolapp.config.AppUploadRoot;
 import friasoft.gn.schoolapp.entity.school.School;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.stereotype.Component;
@@ -15,7 +16,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.Map;
 
@@ -27,7 +27,11 @@ public class SchoolDocumentBranding {
 
     public static final float DEFAULT_WATERMARK_ALPHA = 0.1f;
     private static final int WATERMARK_MAX_PX = 320;
-    private static final Path UPLOADS_DIR = Paths.get("./uploads").toAbsolutePath().normalize();
+    private final Path uploadsDir;
+
+    public SchoolDocumentBranding(AppUploadRoot appUploadRoot) {
+        this.uploadsDir = appUploadRoot.getRoot();
+    }
 
     public void putSchoolOnModel(School school, Map<String, Object> model) {
         if (school == null) {
@@ -44,8 +48,8 @@ public class SchoolDocumentBranding {
             return null;
         }
         String relative = relativeUploadPath.substring("/uploads/".length());
-        Path path = UPLOADS_DIR.resolve(relative).normalize();
-        if (!path.startsWith(UPLOADS_DIR) || !Files.exists(path)) {
+        Path path = uploadsDir.resolve(relative).normalize();
+        if (!path.startsWith(uploadsDir) || !Files.exists(path)) {
             return null;
         }
         try {
@@ -65,8 +69,8 @@ public class SchoolDocumentBranding {
             return null;
         }
         String relative = logoPath.substring("/uploads/".length());
-        Path path = UPLOADS_DIR.resolve(relative).normalize();
-        if (!path.startsWith(UPLOADS_DIR) || !Files.exists(path)) {
+        Path path = uploadsDir.resolve(relative).normalize();
+        if (!path.startsWith(uploadsDir) || !Files.exists(path)) {
             return null;
         }
         try {

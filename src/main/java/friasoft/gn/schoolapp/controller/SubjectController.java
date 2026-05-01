@@ -23,21 +23,21 @@ public class SubjectController {
 
     @PreAuthorize(READ)
     @GetMapping
-    public List<Subject> list() {
-        return service.findAll();
+    public List<Subject> list(@RequestParam Long schoolId) {
+        return service.findCatalogForSchool(schoolId);
     }
 
     @PreAuthorize(READ)
     @GetMapping("/{id}")
-    public ResponseEntity<Subject> getById(@PathVariable Long id) {
-        return service.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Subject> getById(@PathVariable Long id, @RequestParam Long schoolId) {
+        return service.findInCatalog(schoolId, id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @PreAuthorize(WRITE)
     @PostMapping
-    public ResponseEntity<Subject> create(@RequestBody Subject subject) {
+    public ResponseEntity<Subject> create(@RequestParam Long schoolId, @RequestBody Subject subject) {
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(service.save(subject));
+            return ResponseEntity.status(HttpStatus.CREATED).body(service.createForSchool(schoolId, subject));
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
@@ -45,28 +45,26 @@ public class SubjectController {
 
     @PreAuthorize(WRITE)
     @PutMapping("/{id}")
-    public ResponseEntity<Subject> update(@PathVariable Long id, @RequestBody Subject subject) {
-        return service.findById(id)
-            .map(existing -> {
-                subject.setId(id);
-                try {
-                    return ResponseEntity.ok(service.save(subject));
-                } catch (IllegalArgumentException e) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-                }
-            })
-            .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Subject> update(
+        @PathVariable Long id,
+        @RequestParam Long schoolId,
+        @RequestBody Subject subject
+    ) {
+        try {
+            return ResponseEntity.ok(service.updateInCatalog(schoolId, id, subject));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @PreAuthorize(WRITE)
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (service.findById(id).isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long schoolId) {
         try {
-            service.deleteById(id);
+            service.deleteInCatalog(schoolId, id);
             return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }

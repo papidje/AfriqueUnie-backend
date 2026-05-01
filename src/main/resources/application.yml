@@ -31,7 +31,7 @@ spring:
     port: ${MAIL_PORT:1025}
     protocol: smtp
     default-encoding: UTF-8
-    # Expéditeur affiché côté client mail (MailHog accepte n’importe quelle adresse en local).
+    # Expéditeur affiché côté client mail (Mailpit/MailHog accepte n’importe quelle adresse en local).
     from: ${MAIL_FROM:no-reply@schoolapp.local}
     properties:
       mail:
@@ -42,6 +42,15 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+
+# Dossier persistant (Docker : /app/uploads). Sous-dossiers : photos/, logos/
+app:
+  upload:
+    dir: ${APP_UPLOAD_DIR:./uploads}
+  # CSV de motifs (Spring CORS). Surcharge env : CORS_ALLOWED_ORIGIN_PATTERNS
+  cors:
+    # Liste CSV. Ex. prod: CORS_ALLOWED_ORIGIN_PATTERNS=https://app.example.com,https://123.45.67.89
+    allowed-origin-patterns: "${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,https://*:*}"
 
 # Évite que /actuator/health passe en DEGRADED si MailHog n’est pas démarré en local.
 management:
@@ -63,3 +72,6 @@ application:
   jwt:
     duration: 1
     encriptionKey: b58907b9ad3493eaa357bf390e6739209cb5cfc43c3fc9647d7e0d94a0ed98dd
+  grading:
+    # Part de la moyenne de composition dans la moyenne finale de période (0 = ignorée, 0,5 = 50 %, 1 = 100 %).
+    composition-weight-in-period: 0.5

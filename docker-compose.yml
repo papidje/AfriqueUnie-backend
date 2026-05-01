@@ -1,18 +1,72 @@
+# Lancer ce fichier depuis AfriqueUnie-backend/ (dépôt cloné à côté d’AfriqueUnieApp) :
+#   docker compose up --build
+# Alternative : FriaSoft/docker-compose.yml (noms de dossiers AfriqueUnie-*)
 services:
+  db:
+    image: postgres:15
+    container_name: afriqueunie-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-schoolapp2}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-schoolapp2}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  mailserver:
+    image: axllent/mailpit
+    container_name: afriqueunie-mailpit
+    restart: unless-stopped
+    ports:
+      - '8025:8025'
+      - '1025:1025'
+    networks:
+      - app-net
+
   backend:
     build:
       context: .
-    container_name: schoolapp-backend
+      dockerfile: Dockerfile
+    container_name: afriqueunie-backend
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-schoolapp2}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       APP_UPLOAD_DIR: /app/uploads
+      MAIL_HOST: mailserver
+      MAIL_PORT: '1025'
+      MAIL_FROM: ${MAIL_FROM:-no-reply@schoolapp.local}
     volumes:
       - ./uploads:/app/uploads
+    expose:
+      - '8080'
+    networks:
+      - app-net
 
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: schoolapp-mailhog
+  frontend:
+    build:
+      context: ../AfriqueUnieApp
+      dockerfile: Dockerfile
+    container_name: afriqueunie-frontend
     restart: unless-stopped
+    depends_on:
+      - backend
     ports:
-      - "1025:1025" # SMTP — aligné sur spring.mail.port (backend sur la machine hôte)
-      - "8025:8025" # UI http://localhost:8025
+      - '80:80'
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge

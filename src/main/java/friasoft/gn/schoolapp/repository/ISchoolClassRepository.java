@@ -48,4 +48,14 @@ public interface ISchoolClassRepository extends JpaRepository<SchoolClass, Long>
         where sc.id = :id
         """)
     Optional<SchoolClass> findByIdWithYearAndSchool(@Param("id") Long id);
+
+    @Query("""
+        select sc from SchoolClass sc
+        join fetch sc.year y
+        join fetch y.school
+        left join fetch sc.level lv
+        left join fetch lv.group
+        where sc.id = :id
+        """)
+    Optional<SchoolClass> findByIdWithContextForPdf(@Param("id") Long id);
 }

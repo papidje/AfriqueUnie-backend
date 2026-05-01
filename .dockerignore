@@ -1,0 +1,10 @@
+target
+.git
+.gitignore
+uploads
+*.iml
+.idea
+.dockerignore
+Dockerfile
+docker-compose*.yml
+postgres_data

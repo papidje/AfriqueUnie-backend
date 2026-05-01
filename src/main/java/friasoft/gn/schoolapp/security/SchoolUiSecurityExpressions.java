@@ -17,4 +17,9 @@ public final class SchoolUiSecurityExpressions {
 
     public static final String WRITE =
         "hasAnyRole('ADMIN_ECOLE','DIRECTOR','STAFF')";
+
+    /** Création / saisie notes : enseignants inclus. */
+    public static final String WRITE_OR_TEACHER =
+        "hasAnyRole('ADMIN_ECOLE','DIRECTOR','STAFF','TEACHER')";
 }
+

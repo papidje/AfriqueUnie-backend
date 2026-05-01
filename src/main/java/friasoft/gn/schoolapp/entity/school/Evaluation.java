@@ -1,7 +1,6 @@
 package friasoft.gn.schoolapp.entity.school;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.tenancy.TenantAware;
 import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
 import jakarta.persistence.*;
@@ -18,14 +17,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "school_classes",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"year_id", "level_id", "name"}))
-@JsonIgnoreProperties({"createdBy", "updatedBy"})
+@Table(name = "evaluations")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Filter(
     name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
     condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
 )
-public class SchoolClass implements TenantAware {
+public class Evaluation implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,41 +33,39 @@ public class SchoolClass implements TenantAware {
     private Long tenantId;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "year_id", nullable = false)
-    @JsonIgnoreProperties({"classes", "school"})
-    private SchoolYear year;
+    @JoinColumn(name = "class_subject_id", nullable = false)
+    private ClassSubject classSubject;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "level_id", nullable = false)
-    private ClassLevel level;
+    @JoinColumn(name = "grading_period_id", nullable = false)
+    private GradingPeriod gradingPeriod;
 
-    @Column(nullable = false, length = 50)
-    private String name;
+    @Column(nullable = false, length = 200)
+    private String title;
 
-    /**
-     * Découpage des bulletins : 3 périodes (trimestres) ou 2 (semestres), générées à la création
-     * à partir des dates de l'année scolaire.
-     */
+    @Column(length = 2000)
+    private String description;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "period_type", nullable = false, length = 20)
-    private PeriodType periodType = PeriodType.TRIMESTER;
+    @Column(name = "eval_type", nullable = false, length = 30)
+    private EvaluationType evalType;
 
-    /** Effectif maximum (inscription / capacité affichée côté UI). */
     @Column(nullable = false)
-    private Integer capacity = 40;
+    private Double coefficient = 1.0;
+
+    /** Note maximale (barème), ex. 20. */
+    @Column(name = "max_score", nullable = false)
+    private Double maxScore = 20.0;
+
+    @Column(name = "start_date", nullable = false)
+    private LocalDateTime startDate;
+
+    @Column(name = "end_date", nullable = false)
+    private LocalDateTime endDate;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "updated_by")
-    private User updatedBy;
-
 }

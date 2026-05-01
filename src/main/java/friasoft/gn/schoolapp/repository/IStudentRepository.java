@@ -19,6 +19,10 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
 
     List<Student> findBySchoolClass_Id(Long schoolClassId);
 
+    List<Student> findBySchoolClass_IdOrderByLastNameAscFirstNameAsc(Long schoolClassId);
+
+    long countBySchoolClass_Id(Long schoolClassId);
+
     @Query("""
         select s.schoolClass.id, count(s)
         from Student s

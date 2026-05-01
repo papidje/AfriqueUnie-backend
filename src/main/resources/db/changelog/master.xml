@@ -32,5 +32,10 @@
     <include file="changes/v0_023.sql" relativeToChangelogFile="true"/>
     <include file="changes/v0_024.sql" relativeToChangelogFile="true"/>
     <include file="changes/v0_025.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_026.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_027.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_028.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_029.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_030.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

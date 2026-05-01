@@ -35,6 +35,8 @@ public class StudentDetailResponse {
     private String photoPath;
     private String enrollmentStatus;
     private String classHistory;
+    /** Identifiant de la classe courante (périodes de notation, relevés). */
+    private Long schoolClassId;
     private String schoolClassName;
     private String schoolYearLabel;
     private ParentResponse father;
