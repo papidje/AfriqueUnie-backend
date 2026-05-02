@@ -6,6 +6,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -14,12 +15,17 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import static org.springframework.http.HttpMethod.GET;
-import static org.springframework.http.HttpMethod.POST;
-
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
+@EnableMethodSecurity
 @EnableWebSecurity
 public class ConfigurationSecurityApplication {
 
@@ -41,13 +47,18 @@ public class ConfigurationSecurityApplication {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception{
         return
             httpSecurity
+                .cors(httpSecurityCorsConfigurer -> {})
+                //.csrf(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeRequests(authorize -> authorize
-                    .requestMatchers(POST, "/registery").permitAll()
-                    .requestMatchers(POST, "/activate").permitAll()
-                    .requestMatchers(POST, "/login").permitAll()
-                    .requestMatchers(GET, "/schools").permitAll()
-                    .requestMatchers("/roles").permitAll()
+                .authorizeHttpRequests(authorize -> authorize
+                    // Auth endpoints
+                    .requestMatchers("/auth/**").permitAll()
+                    // Fichiers publics (logos, photos) — requis pour <img src="…/api/rest/uploads/…"> sans en-tête Authorization
+                    .requestMatchers("/uploads/**").permitAll()
+                    // Super admin (context-path /api/rest en préfixe réel)
+                    .requestMatchers("/super-admin/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers("/superadmin/**").hasRole("SUPER_ADMIN")
+                    // Any other request
                     .anyRequest().authenticated()
                 )
                 .sessionManagement(httpSecuritySessionManagementConfigurer ->
@@ -55,6 +66,25 @@ public class ConfigurationSecurityApplication {
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+        @Value("${app.cors.allowed-origin-patterns}") String allowedOriginPatternsCsv
+    ) {
+        CorsConfiguration configuration = new CorsConfiguration();
+        List<String> patterns = Arrays.stream(allowedOriginPatternsCsv.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .collect(Collectors.toList());
+        configuration.setAllowedOriginPatterns(patterns);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean

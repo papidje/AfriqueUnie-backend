@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page { size: A4 landscape; margin: 14mm 12mm; }
+        body {
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 9pt;
+            color: #111827;
+        }
+        .header {
+            display: table;
+            width: 100%;
+            margin-bottom: 14px;
+            border-bottom: 1px solid #d1d5db;
+            padding-bottom: 10px;
+        }
+        .header-logo { display: table-cell; width: 70px; vertical-align: middle; }
+        .header-logo img { width: 58px; height: 58px; object-fit: contain; }
+        .header-title { display: table-cell; vertical-align: middle; }
+        h1 {
+            margin: 0;
+            font-size: 14pt;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .meta { font-size: 9pt; color: #374151; margin-top: 4px; }
+        h2 {
+            margin: 10px 0 8px;
+            font-size: 11pt;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+        }
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 4px 5px;
+            text-align: center;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: 700;
+        }
+        th.student-col, td.student-col {
+            text-align: left;
+            min-width: 120px;
+        }
+        th.num, td.num {
+            font-variant-numeric: tabular-nums;
+        }
+        .subj-code { display: block; font-size: 7.5pt; font-weight: 700; }
+        .subj-name { display: block; font-size: 6.5pt; color: #4b5563; max-width: 56px; word-wrap: break-word; }
+        .coef { font-size: 6.5pt; color: #6b7280; }
+        .footer-note {
+            margin-top: 10px;
+            font-size: 7.5pt;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+<div class="doc">
+    <div class="header">
+        <div class="header-logo" th:if="${schoolLogoDataUrl != null}">
+            <img th:src="${schoolLogoDataUrl}" alt=""/>
+        </div>
+        <div class="header-title">
+            <h1 th:text="${schoolName}">Établissement</h1>
+            <div class="meta">
+                <span>Année scolaire : <strong th:text="${yearLabel}">—</strong></span>
+                &#160;·&#160;
+                <span>Classe : <strong th:text="${className}">—</strong></span>
+                <span th:if="${levelName != null and levelName != '—'}">
+                    &#160;·&#160; <span th:text="${levelName}">Niveau</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <h2>Relevé de notes — <span th:text="${periodName}">Période</span></h2>
+    <p class="footer-note" th:if="${compositionWeight > 0}">
+        Pondération période : la composition compte pour <span th:text="${#numbers.formatDecimal(compositionWeight * 100, 0, 0)} + ' %'">50 %</span> de la moyenne par matière lorsqu’il existe une note de composition.
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th class="student-col">Élève</th>
+            <th th:each="c : ${columns}" class="num">
+                <span class="subj-code" th:text="${c.subjectCode != null and !#strings.isEmpty(c.subjectCode) ? c.subjectCode : '—'}">MAT</span>
+                <span class="subj-name" th:text="${c.subjectName}">Matière</span>
+                <span class="coef" th:text="'(coef. ' + ${#numbers.formatDecimal(c.coefficient, 1, 1)} + ')'">(coef. 1)</span>
+            </th>
+            <th class="num">Moy. générale</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="rv : ${rowViews}">
+            <td class="student-col" th:text="${rv.lastName} + ' ' + ${rv.firstName}">Nom Prénom</td>
+            <td th:each="sc : ${rv.subjectCells}" class="num" th:text="${sc}">10,00</td>
+            <td class="num" th:text="${rv.generalAverage}">12,00</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

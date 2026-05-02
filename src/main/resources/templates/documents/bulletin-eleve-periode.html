@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page { size: A4; margin: 16mm 14mm; }
+        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10pt; color: #111827; }
+        .header { display: table; width: 100%; margin-bottom: 14px; border-bottom: 1px solid #d1d5db; padding-bottom: 10px; }
+        .header-logo { display: table-cell; width: 70px; vertical-align: middle; }
+        .header-logo img { width: 58px; height: 58px; object-fit: contain; }
+        .header-title { display: table-cell; vertical-align: middle; }
+        h1 { margin: 0; font-size: 14pt; text-transform: uppercase; }
+        .meta { font-size: 9pt; color: #374151; margin-top: 4px; }
+        h2 { margin: 12px 0 8px; font-size: 12pt; text-align: center; }
+        .kpi { margin: 10px 0; font-size: 9.5pt; }
+        .kpi strong { color: #111; }
+        table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+        th, td { border: 1px solid #d1d5db; padding: 4px 5px; text-align: center; }
+        th { background: #f3f4f6; font-weight: 700; }
+        td.l { text-align: left; }
+        .subj { font-size: 7.5pt; color: #4b5563; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="header-logo" th:if="${schoolLogoDataUrl != null}">
+        <img th:src="${schoolLogoDataUrl}" alt=""/>
+    </div>
+    <div class="header-title">
+        <h1 th:text="${schoolName}">Établissement</h1>
+        <div class="meta">
+            <span>Année : <strong th:text="${yearLabel}">—</strong></span>
+            &#160;·&#160;
+            <span>Classe : <strong th:text="${className}">—</strong></span>
+            <span th:if="${levelName != null and levelName != '—'}">&#160;·&#160; <span th:text="${levelName}">Niveau</span></span>
+        </div>
+    </div>
+</div>
+<h2>Bulletin — <span th:text="${periodName}">Période</span></h2>
+<p class="kpi">
+    <strong th:text="${studentName}">Élève</strong> — Matricule <span th:text="${matricule}">—</span>
+</p>
+<p class="kpi">
+    Moyenne générale : <strong th:text="${generalAverage}">—</strong> ·
+    Rang : <strong th:text="${rank}">—</strong> / <span th:text="${classSize}">0</span> ·
+    Évaluations notées : <strong th:text="${evalCount}">0</strong>
+</p>
+<p class="kpi" th:if="${compositionWeight > 0}" style="color:#6b7280; font-size:8pt">
+    Poids composition : <span th:text="${#numbers.formatDecimal(compositionWeight * 100, 0, 0)}">0</span> % de la moyenne de période par matière (lorsqu’il existe une note de composition).
+</p>
+<table>
+    <thead>
+    <tr>
+        <th class="l">Matière</th>
+        <th>Coef.</th>
+        <th>Contrôle continu</th>
+        <th>Composition</th>
+        <th>Moy. période</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="s : ${subjectRows}">
+        <td class="l">
+            <span th:text="${s.subjectCode}">MAT</span>
+            <span class="subj" th:text="${s.subjectName}">—</span>
+        </td>
+        <td th:text="${#numbers.formatDecimal(s.coefficient, 1, 1)}">1</td>
+        <td th:text="${s.continuous}">—</td>
+        <td th:text="${s.composition}">—</td>
+        <td th:text="${s.period}">—</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

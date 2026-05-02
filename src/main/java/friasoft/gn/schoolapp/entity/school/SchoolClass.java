@@ -1,0 +1,75 @@
+package friasoft.gn.schoolapp.entity.school;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.tenancy.TenantAware;
+import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "school_classes",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"year_id", "level_id", "name"}))
+@JsonIgnoreProperties({"createdBy", "updatedBy"})
+@Filter(
+    name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
+    condition = "tenant_id = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
+)
+public class SchoolClass implements TenantAware {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "year_id", nullable = false)
+    @JsonIgnoreProperties({"classes", "school"})
+    private SchoolYear year;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "level_id", nullable = false)
+    private ClassLevel level;
+
+    @Column(nullable = false, length = 50)
+    private String name;
+
+    /**
+     * Découpage des bulletins : 3 périodes (trimestres) ou 2 (semestres), générées à la création
+     * à partir des dates de l'année scolaire.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "period_type", nullable = false, length = 20)
+    private PeriodType periodType = PeriodType.TRIMESTER;
+
+    /** Effectif maximum (inscription / capacité affichée côté UI). */
+    @Column(nullable = false)
+    private Integer capacity = 40;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private User updatedBy;
+
+}

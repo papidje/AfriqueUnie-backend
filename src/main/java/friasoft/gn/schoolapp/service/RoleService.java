@@ -1,20 +1,17 @@
 package friasoft.gn.schoolapp.service;
 
-import java.util.List;
-
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import friasoft.gn.schoolapp.entity.Role;
-import friasoft.gn.schoolapp.repository.RoleRepository;
-import lombok.AllArgsConstructor;
+import friasoft.gn.schoolapp.entity.auth.User;
+import java.util.List;
 
 @AllArgsConstructor
 @Service
 public class RoleService {
-
-    private RoleRepository roleRepository;
-
-    public List<Role> getAll() {
-        return this.roleRepository.findAll();
+    public List<String> getAll() {
+        return java.util.Arrays.stream(User.UserRole.values())
+            .map(Enum::name)
+            .toList();
     }
 }

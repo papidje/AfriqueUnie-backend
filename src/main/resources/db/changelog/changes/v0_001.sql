@@ -1,94 +1,73 @@
+--liquibase formatted sql
+--changeset friasoft:001-baseline-core
+--comment: Schéma initial — tenants, écoles, utilisateurs avec les 3 rôles (pas de tables roles/users_roles).
+
 CREATE SCHEMA IF NOT EXISTS schools;
 
-create table schools.class_group (
-  id integer not null,
-  name varchar(255),
-  primary key (id)
+CREATE TABLE schools.tenants (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    address VARCHAR(255),
+    logo VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
 );
 
-create table schools.contact (
-  id smallint not null,
-  backup_mail varchar(255),
-  backup_phone varchar(255),
-  prime_mail varchar(255),
-  prime_phone varchar(255),
-  primary key (id)
+CREATE TABLE schools.schools (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    adress VARCHAR(255),
+    contact VARCHAR(255),
+    open_date DATE,
+    logo VARCHAR(255),
+    is_active BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
 );
 
-create table schools.grade (
-  class_group_id integer references schools.class_group,
-  id integer not null,
-  name varchar(255),
-  primary key (id)
+CREATE TABLE schools.users (
+    id BIGSERIAL PRIMARY KEY,
+    fullname VARCHAR(255) NOT NULL,
+    username VARCHAR(255),
+    email VARCHAR(255),
+    password VARCHAR(255),
+    is_active BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    school_id BIGINT REFERENCES schools.schools(id),
+    tenant_id BIGINT REFERENCES schools.tenants(id),
+    last_login_at TIMESTAMP,
+    role VARCHAR(30) NOT NULL DEFAULT 'STAFF',
+    CONSTRAINT chk_users_role CHECK (role IN ('SUPER_ADMIN', 'ADMIN_ECOLE', 'STAFF'))
 );
 
-create table schools.payment (
-  amount float(53) not null,
-  id integer not null,
-  rest_to_pay float(53) not null,
-  type varchar(255),
-  primary key (id)
+CREATE INDEX idx_users_tenant_id ON schools.users(tenant_id);
+CREATE INDEX idx_users_school_id ON schools.users(school_id);
+CREATE INDEX idx_users_email ON schools.users(email);
+
+CREATE TABLE schools.activations (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES schools.users(id),
+    registration_date TIMESTAMP,
+    code VARCHAR(6) NOT NULL,
+    expiration TIMESTAMP
 );
 
-create table schools.promotion (
-  grade_id integer references schools.grade,
-  id smallint not null,
-  name varchar(255),
-  primary key (id)
+CREATE TABLE schools.refresh_token (
+    id BIGSERIAL PRIMARY KEY,
+    expired BOOLEAN NOT NULL,
+    value VARCHAR(255),
+    creation TIMESTAMP NOT NULL,
+    expiration TIMESTAMP NOT NULL
 );
 
-create table schools.responsible (
-  contact_id smallint unique references schools.contact,
-  id smallint not null,
-  adress varchar(255),
-  civility varchar(255),
-  first_name varchar(255),
-  last_name varchar(255),
-  primary key (id)
-);
-
-create table schools.role (
-  id smallint not null,
-  name varchar(255),
-  primary key (id)
-);
-
-create table schools.school (
-  id smallint not null,
-  open_date date,
-  adress varchar(255),
-  logo varchar(255),
-  name varchar(255),
-  primary key (id)
-);
-
-create table schools.staff (
-  id smallint not null,
-  is_active boolean not null,
-  role_id smallint references schools.role,
-  school_id smallint references schools.school,
-  email varchar(255),
-  name varchar(255),
-  password varchar(255),
-  primary key (id)
-);
-
-create table schools.student (
-  birth_date date,
-  id integer not null,
-  adress varchar(255),
-  civility varchar(255),
-  first_name varchar(255),
-  last_name varchar(255),
-  matricule varchar(255),
-  primary key (id)
-);
-
-create table schools.activation (
-  id integer not null,
-  school_id smallint references schools.school,
-  user_id smallint references schools.staff,
-  registration_date date,
-  code varchar(6) not null,
-  primary key (id)
+CREATE TABLE schools.jwts (
+    id BIGSERIAL PRIMARY KEY,
+    jwt TEXT,
+    is_active BOOLEAN NOT NULL,
+    is_expired BOOLEAN NOT NULL,
+    created_at TIMESTAMP,
+    last_login_at TIMESTAMP,
+    user_id BIGINT REFERENCES schools.users(id),
+    refresh_token_id BIGINT REFERENCES schools.refresh_token(id)
 );

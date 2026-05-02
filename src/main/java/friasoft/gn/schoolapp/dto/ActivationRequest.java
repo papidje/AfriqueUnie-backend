@@ -1,8 +1,9 @@
 package friasoft.gn.schoolapp.dto;
 
 public record ActivationRequest(
-    String userMail,
-    String code
+    String email,
+    String activationCode,
+    String newPassword
 ) {
 
 }

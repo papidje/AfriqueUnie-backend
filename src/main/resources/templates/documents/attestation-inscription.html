@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <style>
+        @page { size: A4; margin: 22mm 18mm; }
+        
+        .doc {
+            position: relative;
+            min-height: 200mm;
+        }
+        .doc-body {
+            position: relative;
+            z-index: 1;
+        }
+        body {
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 12pt;
+            color: #111827;
+        }
+        .header {
+            display: table;
+            width: 100%;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #d1d5db;
+            padding-bottom: 12px;
+        }
+        .header-logo {
+            display: table-cell;
+            width: 80px;
+            vertical-align: middle;
+        }
+        .header-logo img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+        }
+        .header-title {
+            display: table-cell;
+            vertical-align: middle;
+        }
+        h1 {
+            margin: 0;
+            font-size: 20pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        h2 {
+            margin: 18px 0 14px;
+            text-align: center;
+            font-size: 16pt;
+            text-transform: uppercase;
+        }
+        p { line-height: 1.5; }
+        .field {
+            margin: 7px 0;
+        }
+        .name-row {
+            display: table;
+            width: 100%;
+            margin: 7px 0 12px;
+        }
+        .name-text {
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .name-text .field {
+            margin: 0;
+        }
+        .name-photo {
+            display: table-cell;
+            width: 88px;
+            vertical-align: middle;
+            text-align: right;
+            padding-left: 10px;
+        }
+        .name-photo img {
+            width: 80px;
+            object-fit: cover;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+        .footer {
+            margin-top: 36px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+<div
+    class="doc"
+    th:style="${schoolLogoWatermarkDataUrl} ? |background-image: url('${schoolLogoWatermarkDataUrl}'); background-repeat: no-repeat; background-position: center center; background-size: 50% auto;| : ''"
+>
+    <div class="doc-body">
+        <div class="header">
+            <div class="header-logo">
+                <img th:if="${schoolLogoDataUrl}" th:src="${schoolLogoDataUrl}" alt=""></img>
+            </div>
+            <div class="header-title">
+                <h1 th:text="${schoolName}">Nom de l'école</h1>
+            </div>
+        </div>
+
+        <h2>Attestation d'inscription</h2>
+
+        <p>Je soussigné(e), représentant(e) de l'établissement <strong th:text="${schoolName}">École</strong>, atteste que :</p>
+
+        <div class="name-row">
+            <div class="name-text">
+                <p class="field"><strong>Nom et prénoms :</strong> <span th:text="${studentFullName}">NOM Prénom</span></p>
+            </div>
+            <div class="name-photo" th:if="${studentPhotoDataUrl}">
+                <img th:src="${studentPhotoDataUrl}" alt=""></img>
+            </div>
+        </div>
+        <p class="field"><strong>Matricule :</strong> <span th:text="${studentMatricule}">---</span></p>
+        <p class="field"><strong>Date et lieu de naissance :</strong> <span th:text="${birthDate}">--/--/----</span> à <span th:text="${birthPlace}">---</span></p>
+        <p class="field"><strong>Classe :</strong> <span th:text="${className}">---</span></p>
+        <p class="field"><strong>Année scolaire :</strong> <span th:text="${schoolYearLabel}">---</span></p>
+
+        <p>
+            Est régulièrement inscrit(e) dans notre établissement pour l'année scolaire mentionnée ci-dessus.
+            La présente attestation est délivrée pour servir et valoir ce que de droit.
+        </p>
+
+        <div class="footer">
+            <p>Fait le <span th:text="${issueDate}">--/--/----</span></p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

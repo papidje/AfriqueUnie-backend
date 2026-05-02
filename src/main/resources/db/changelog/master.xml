@@ -1,0 +1,41 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- 1. Schéma auth + tenants + users.role (SUPER_ADMIN | ADMIN_ECOLE | STAFF) -->
+    <include file="changes/v0_001.sql" relativeToChangelogFile="true"/>
+    <!-- 2. Domaine scolaire (dépend de schools, users pour created_by) -->
+    <include file="changes/v0_002.sql" relativeToChangelogFile="true"/>
+    <!-- 3. Fonction + triggers d’audit sur fees / enrollments / payments -->
+    <include file="changes/v0_003.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_004.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_005.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_006.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_007.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_008.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_009.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_010.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_011.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_012.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_013.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_014.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_015.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_016.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_017.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_018.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_019.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_020.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_021.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_022.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_023.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_024.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_025.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_026.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_027.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_028.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_029.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_030.sql" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

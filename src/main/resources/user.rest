@@ -1,0 +1,101 @@
+###
+// Activate
+POST http://localhost:8080/api/rest/auth/activate
+Content-Type: application/json
+
+{
+  "email":"papidje@yopmail.com",
+  "activationCode":"806370",
+  "newPassword":"password"
+}
+
+###
+// Login
+POST http://localhost:8080/api/rest/auth/login
+Content-Type: application/json
+
+{
+  "userName":"papidje@yopmail.com",
+  "password":"password"
+}
+
+###
+// Get Users
+GET http://localhost:8080/api/rest/users
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTk1NDQxNTMsImV4cCI6MTc1OTU0NTk1Mywic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbXSwibmFtZSI6IlPDqXLDqSBNb3Vzc2EgRG91bWJvdXlhIiwiZW1haWwiOiJwYXBpZGplQHlvcG1haWwuY29tIiwibGFzdExvZ2luQXQiOjE3NTk1NDQxNTM2Mjd9.pZjYCJTpGvoNZ-oiVTTLtgC5sygfmvHZI3mPiwqq-7E
+
+{}
+
+###
+// Refresh Token
+POST http://localhost:8080/api/rest/auth/refresh-token
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMDczNjMsImV4cCI6MTc1OTAwOTE2Mywic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbeyJhdXRob3JpdHkiOiJST0xFX0FETUlOSVNUUkFUT1IifSx7ImF1dGhvcml0eSI6IlJPTEVfU1VQRVJfQURNSU4ifV0sInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDA2NjQ0MTkxLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEifQ.Clp4hPA-IyeKnRKXBidSdJNV0L-qdCrbx4dDpROrzi0
+
+{
+  "refresh": "86c2ccfe-3c2b-4d39-b50b-17eefac3d342"
+}
+
+###
+// Logout
+POST http://localhost:8080/api/rest/auth/logout
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMDczNjMsImV4cCI6MTc1OTAwOTE2Mywic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsInJvbGVzIjpbeyJhdXRob3JpdHkiOiJST0xFX0FETUlOSVNUUkFUT1IifSx7ImF1dGhvcml0eSI6IlJPTEVfU1VQRVJfQURNSU4ifV0sInVzZXJuYW1lIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDA2NjQ0MTkxLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEifQ.Clp4hPA-IyeKnRKXBidSdJNV0L-qdCrbx4dDpROrzi0
+
+{}
+
+###
+// Reset Password
+POST http://localhost:8080/api/rest/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "papidje@yopmail.com"
+}
+
+###
+// New Password
+POST http://localhost:8080/api/rest/auth/new-password
+Content-Type: application/json
+
+{
+  "email": "papidje@yopmail.com",
+  "code": "163796",
+  "password": "password2"
+}
+
+
+###
+// Create School
+POST http://localhost:8080/api/rest/schools
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NjAwNDI4MTksImV4cCI6MTc2MDA0NDYxOSwic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzYwMDQyODE5MzYzLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEiLCJyb2xlcyI6W3siYXV0aG9yaXR5IjoiUk9MRV9TVVBFUl9BRE1JTiJ9XSwidXNlcm5hbWUiOiJwYXBpZGplQHlvcG1haWwuY29tIn0.sPBxnYg7ZnDVJYPblkCiMUZqENs0IMtljJv2SbSazHA
+
+{
+  "name":"Afrique Unie Fria",
+  "adress":"Fira, Quartier Aviation",
+  "contact": "224 660 22 55 66",
+  "openDate":"2020-10-10",
+  "logo":"logoUrl"
+}
+
+###
+// Get School
+GET http://localhost:8080/api/rest/schools
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwMTMxOTQsImV4cCI6MTc1OTAxNDk5NCwic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzU5MDEzMTk0MTg5LCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEiLCJyb2xlcyI6W3siYXV0aG9yaXR5IjoiUk9MRV9BRE1JTklTVFJBVE9SIn1dLCJ1c2VybmFtZSI6InBhcGlkamVAeW9wbWFpbC5jb20ifQ.qd-VJOKKQuUQg-8az4FLnX60u1I0RqaxwQzNQqDoo6o
+
+{}
+
+###
+// Update School
+PUT http://localhost:8080/api/rest/schools/2
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NjAwNDY2OTYsImV4cCI6MTc2MDA0ODQ5Niwic3ViIjoicGFwaWRqZUB5b3BtYWlsLmNvbSIsImxhc3RMb2dpbkF0IjoxNzYwMDQ2Njk2MjUyLCJlbWFpbCI6InBhcGlkamVAeW9wbWFpbC5jb20iLCJuYW1lIjoiU8OpcsOpIE1vdXNzYSBEb3VtYm91eWEiLCJyb2xlcyI6W3siYXV0aG9yaXR5IjoiUk9MRV9TVVBFUl9BRE1JTiJ9XSwidXNlcm5hbWUiOiJwYXBpZGplQHlvcG1haWwuY29tIn0.YzdgOGXDGiaMTQmVhzs-sO73UqSGcNxriJfKKXalI7A
+
+{
+  "name": "Nouveau Nom école"
+}
+
+###

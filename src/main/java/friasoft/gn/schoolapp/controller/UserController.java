@@ -1,26 +1,21 @@
 package friasoft.gn.schoolapp.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import friasoft.gn.schoolapp.dto.ActivationRequest;
-import friasoft.gn.schoolapp.dto.LoginRequest;
-import friasoft.gn.schoolapp.dto.UserRequest;
+import friasoft.gn.schoolapp.dto.ChangePasswordRequest;
+import friasoft.gn.schoolapp.dto.InviteUserDTO;
+import friasoft.gn.schoolapp.dto.InviteUserResponse;
 import friasoft.gn.schoolapp.dto.UserResponse;
-import friasoft.gn.schoolapp.security.JwtService;
+import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.service.SchoolService;
 import friasoft.gn.schoolapp.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Map;
-
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 
 @Slf4j
@@ -29,42 +24,81 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequestMapping("users")
 public class UserController {
     private UserService userService;
-    private AuthenticationManager authenticationManager;
-    private JwtService jwtService;
-    
-    @PostMapping("registery")
-    public void registery(@RequestBody UserRequest user) {
-        log.info("Registery");
-        this.userService.registery(user);
-    }
+    private SchoolService schoolService;
 
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
     @GetMapping()
     public List<UserResponse> getAll() {
-        return this.userService.getAll().stream().map(
-            user -> new UserResponse(
-                user.getId(), 
-                user.getName(), 
-                user.getEmail(), 
-                user.isActive(),
-                user.getRole().getName().name()
-            )
-        ).toList();
+        return this.userService
+            .getAll()
+            .stream()
+            .map(this::mapToUserResponse)
+            .toList();
     }
 
-    @PostMapping(path = "activate")
-    public void activate(@RequestBody ActivationRequest activation) {
-        this.userService.activate(activation);
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/userInfo")
+    public UserResponse getUserInfo() {
+        return this.mapToUserResponse(this.userService.getUserInfo());
     }
 
-    @PostMapping(path = "login")
-    public Map<String, String> login(@RequestBody LoginRequest request) {
-        final Authentication authentication = this.authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.userName(), request.password())
-        );
-        log.info("resultat {}", authentication);
-        if (authentication.isAuthenticated()) {
-            return this.jwtService.generate(request.userName());
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/change-password")
+    public void changePassword(@RequestBody ChangePasswordRequest body) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
-        return null;
+        this.userService.changeOwnPassword(user, body.currentPassword(), body.newPassword());
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
+    @GetMapping("/admins-by-school/{schoolId}")
+    public List<UserResponse> getAdminsBySchool(@PathVariable Long schoolId) {
+        this.schoolService.assertCurrentUserCanAccessSchool(schoolId);
+        return this
+            .userService.getAdminBySchool(schoolId)
+            .stream()
+            .map(this::mapToUserResponse)
+            .toList();
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
+    @GetMapping("/search-admins/{term}")
+    public List<UserResponse> getAdminsBySchool(@PathVariable String term) {
+        return this
+            .userService.getUnassignedUsers(term)
+            .stream()
+            .map(this::mapToUserResponse)
+            .toList();
+    }
+
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
+    @PostMapping("/invite")
+    public InviteUserResponse inviteUser(@RequestBody InviteUserDTO body) {
+        String code = this.userService.inviteUser(body);
+        return new InviteUserResponse("Utilisateur invité avec succès", code);
+    }
+
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR')")
+    @PostMapping("/{userId}/resend-activation")
+    public void resendActivation(@PathVariable Long userId) {
+        this.userService.resendActivationEmail(userId);
+    }
+
+    private UserResponse mapToUserResponse(User user) {
+        List<String> effectiveRoles = List.of(
+            (user.getRole() != null ? user.getRole() : User.UserRole.STAFF).name()
+        );
+        return new UserResponse(
+            user.getId(),
+            user.getUsername(),
+            user.getFullname(),
+            user.getEmail(),
+            user.isActive(),
+            effectiveRoles);
     }
 }
