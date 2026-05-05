@@ -30,9 +30,11 @@ public class RegistrationService {
             throw new RuntimeException("Email deja utilisé");
         });
 
+        String address = normalizeBlankToNull(request.tenantAddress());
+
         Tenant tenant = new Tenant();
         tenant.setName(request.tenantName());
-        tenant.setAddress(request.tenantAddress());
+        tenant.setAddress(address);
         tenant.setLogo(request.tenantLogo());
         tenant = tenantRepository.save(tenant);
 
@@ -40,7 +42,8 @@ public class RegistrationService {
         School school = new School();
         school.setTenantId(tenant.getId());
         school.setName(resolvedSchoolName);
-        school.setAdress(request.tenantAddress());
+        school.setAdress(address);
+        school.setContact(normalizeBlankToNull(request.schoolContact()));
         school.setLogo(request.tenantLogo());
         school.setActive(false);
         school.setCreated_at(Instant.now());
@@ -76,5 +79,19 @@ public class RegistrationService {
         if (request.tenantName() == null || request.tenantName().isBlank()) {
             throw new RuntimeException("Nom du tenant obligatoire");
         }
+        if (request.tenantAddress() == null || request.tenantAddress().isBlank()) {
+            throw new RuntimeException("Adresse obligatoire");
+        }
+        if (request.schoolContact() == null || request.schoolContact().isBlank()) {
+            throw new RuntimeException("Téléphone obligatoire");
+        }
+    }
+
+    private static String normalizeBlankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String t = value.trim();
+        return t.isEmpty() ? null : t;
     }
 }
