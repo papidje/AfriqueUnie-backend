@@ -7,6 +7,7 @@ public record RegistrationRequest(
     String tenantName,
     String schoolName,
     String tenantAddress,
-    String tenantLogo
+    String tenantLogo,
+    String schoolContact
 ) {
 }
