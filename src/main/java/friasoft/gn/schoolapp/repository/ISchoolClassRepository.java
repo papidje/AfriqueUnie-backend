@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,4 +59,31 @@ public interface ISchoolClassRepository extends JpaRepository<SchoolClass, Long>
         where sc.id = :id
         """)
     Optional<SchoolClass> findByIdWithContextForPdf(@Param("id") Long id);
+
+    /** Pour batch sous TenantContext : classes dont l’année est active. */
+    @Query("""
+        select sc.id from SchoolClass sc
+        join sc.year y
+        where y.active = true
+        order by sc.id
+        """)
+    List<Long> findIdsForActiveSchoolYears();
+
+    @Query("""
+        select sc.id from SchoolClass sc
+        join sc.year y
+        where y.school.id = :schoolId and y.active = true
+        order by sc.id
+        """)
+    List<Long> findIdsForActiveSchoolYearBySchoolId(@Param("schoolId") Long schoolId);
+
+    /** Classes dont l’id est dans {@code ids}, rattachées à l’établissement et à l’année active. */
+    @Query("""
+        select count(sc.id) from SchoolClass sc
+        join sc.year y
+        where sc.id in :ids
+          and y.school.id = :schoolId
+          and y.active = true
+        """)
+    long countByIdsAndSchoolActiveYear(@Param("schoolId") Long schoolId, @Param("ids") Collection<Long> ids);
 }

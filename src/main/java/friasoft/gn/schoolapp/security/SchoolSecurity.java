@@ -34,6 +34,9 @@ public class SchoolSecurity {
         }
         if (user.getRole() == User.UserRole.ADMIN_ECOLE) {
             Long orgTid = user.getOrganizationTenantId();
+            if (orgTid == null) {
+                orgTid = user.getTenantId();
+            }
             return orgTid != null && orgTid.equals(school.getTenantId());
         }
         if (user.getRole() == User.UserRole.STAFF

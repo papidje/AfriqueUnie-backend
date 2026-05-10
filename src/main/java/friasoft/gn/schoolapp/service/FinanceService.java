@@ -179,6 +179,24 @@ public class FinanceService {
             .orElseThrow(() -> new IllegalArgumentException("Classe introuvable."));
         schoolService.assertCurrentUserCanAccessSchool(schoolClass.getYear().getSchool().getId());
 
+        return loadPaymentStatusesForClass(schoolClass);
+    }
+
+    /**
+     * Réservé aux jobs système (batch notifications) : pas de contrôle utilisateur ;
+     * le filtre tenant Hibernate doit être actif ({@code TenantContext}).
+     */
+    @Transactional(readOnly = true)
+    public List<StudentPaymentStatusDTO> getClassPaymentStatusTrusted(Long classId) {
+        if (classId == null) {
+            throw new IllegalArgumentException("classId obligatoire.");
+        }
+        SchoolClass schoolClass = schoolClassRepository.findByIdWithYearAndSchool(classId)
+            .orElseThrow(() -> new IllegalArgumentException("Classe introuvable."));
+        return loadPaymentStatusesForClass(schoolClass);
+    }
+
+    private List<StudentPaymentStatusDTO> loadPaymentStatusesForClass(SchoolClass schoolClass) {
         FeeStructure feeStructure = feeStructureRepository
             .findByClassLevel_IdAndSchoolYear_Id(schoolClass.getLevel().getId(), schoolClass.getYear().getId())
             .orElseThrow(() -> new IllegalArgumentException("Aucune structure de frais trouvée pour ce niveau et cette année."));
@@ -189,7 +207,7 @@ public class FinanceService {
         double tuitionExpected = monthlyFee * MONTHS_OCT_TO_JUN.size();
         double totalExpected = registrationFee + tuitionExpected + suppliesFee;
 
-        List<Student> students = studentRepository.findBySchoolClass_Id(classId);
+        List<Student> students = studentRepository.findBySchoolClass_Id(schoolClass.getId());
         if (students.isEmpty()) {
             return List.of();
         }

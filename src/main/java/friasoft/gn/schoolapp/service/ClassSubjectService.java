@@ -9,6 +9,7 @@ import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.entity.school.SchoolClass;
 import friasoft.gn.schoolapp.entity.school.Subject;
 import friasoft.gn.schoolapp.repository.IClassSubjectRepository;
+import friasoft.gn.schoolapp.repository.IEvaluationRepository;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.ISubjectRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
@@ -24,6 +25,7 @@ import java.util.List;
 public class ClassSubjectService {
 
     private final IClassSubjectRepository classSubjectRepository;
+    private final IEvaluationRepository evaluationRepository;
     private final ISchoolClassRepository schoolClassRepository;
     private final ISubjectRepository subjectRepository;
     private final SubjectService subjectService;
@@ -93,7 +95,9 @@ public class ClassSubjectService {
             .orElseThrow(() -> new IllegalArgumentException("Liaison introuvable."));
         assertAccess(cs.getSchoolClass());
         cs.setCoefficient(coefficient);
-        return toResponse(classSubjectRepository.save(cs), cs.getSchoolClass().getYear().getSchool().getId());
+        ClassSubject saved = classSubjectRepository.save(cs);
+        evaluationRepository.bulkSyncCoefficientForClassSubject(id, coefficient.doubleValue());
+        return toResponse(saved, cs.getSchoolClass().getYear().getSchool().getId());
     }
 
     @Transactional

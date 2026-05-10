@@ -112,7 +112,6 @@ public class EvaluationService {
         if (req.endDate().isBefore(req.startDate())) {
             throw new IllegalArgumentException("La fin doit être postérieure au début.");
         }
-        double coeff = req.coefficient() != null && req.coefficient() > 0 ? req.coefficient() : 1.0;
         double maxScore = resolveMaxScore(req.maxScore());
 
         Evaluation e = new Evaluation();
@@ -122,7 +121,7 @@ public class EvaluationService {
         e.setTitle(req.title().trim());
         e.setDescription(req.description() != null ? req.description().trim() : null);
         e.setEvalType(req.type());
-        e.setCoefficient(coeff);
+        e.setCoefficient(coefficientFromClassSubject(cs));
         e.setMaxScore(maxScore);
         e.setStartDate(req.startDate());
         e.setEndDate(req.endDate());
@@ -245,7 +244,7 @@ public class EvaluationService {
         e.setTitle(req.title().trim());
         e.setDescription(req.description() != null ? req.description().trim() : null);
         e.setEvalType(req.type());
-        e.setCoefficient(req.coefficient() != null && req.coefficient() > 0 ? req.coefficient() : 1.0);
+        e.setCoefficient(coefficientFromClassSubject(e.getClassSubject()));
         e.setMaxScore(resolveMaxScore(req.maxScore()));
         e.setStartDate(req.startDate());
         e.setEndDate(req.endDate());
@@ -284,6 +283,14 @@ public class EvaluationService {
             return 20.0;
         }
         return maxScore;
+    }
+
+    /** Copie du coefficient matière/classe (integer côté {@link ClassSubject}). */
+    private static double coefficientFromClassSubject(ClassSubject cs) {
+        if (cs.getCoefficient() != null && cs.getCoefficient() > 0) {
+            return cs.getCoefficient().doubleValue();
+        }
+        return 1.0;
     }
 
     private static TimetableEvaluationDto toTimetableDto(Evaluation e) {
