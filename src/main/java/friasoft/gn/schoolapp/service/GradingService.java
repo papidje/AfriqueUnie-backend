@@ -431,7 +431,15 @@ public class GradingService {
         return 20.0;
     }
 
+    /** Pondération d’une note dans la moyenne du bloc : coefficient matière/classe (pas de saisie par évaluation). */
     private static double effectiveCoeff(Evaluation e) {
+        ClassSubject cs = e.getClassSubject();
+        if (cs != null) {
+            Integer c = cs.getCoefficient();
+            if (c != null && c > 0) {
+                return c.doubleValue();
+            }
+        }
         if (e.getCoefficient() != null && e.getCoefficient() > 0) {
             return e.getCoefficient();
         }

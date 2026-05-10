@@ -50,6 +50,7 @@ public class Evaluation implements TenantAware {
     @Column(name = "eval_type", nullable = false, length = 30)
     private EvaluationType evalType;
 
+    /** Copie du coefficient matière/classe pour jointures / rapports ; source de vérité : {@link ClassSubject#getCoefficient()}. */
     @Column(nullable = false)
     private Double coefficient = 1.0;
 

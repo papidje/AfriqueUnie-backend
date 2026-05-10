@@ -69,6 +69,10 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 application:
+  communication:
+    # Notifications automatiques (multi-tenant). Désactiver en dev si besoin : SCHEDULED_ENABLED=false
+    scheduled-enabled: ${SCHEDULED_ENABLED:true}
+    batch-cron: ${COMMUNICATION_BATCH_CRON:0 20 7 * * *}
   jwt:
     duration: 1
     encriptionKey: b58907b9ad3493eaa357bf390e6739209cb5cfc43c3fc9647d7e0d94a0ed98dd

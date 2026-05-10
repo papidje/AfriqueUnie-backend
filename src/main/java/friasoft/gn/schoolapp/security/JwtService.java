@@ -16,10 +16,12 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Key;
 import java.time.Instant;
@@ -226,10 +228,15 @@ public class JwtService {
     }
 
     public Map<String, String> refreshToken(Map<String, String> refreshTokenRequest) {
-        Jwt jwt = this.iJwtRepository.findByRefreshToken(refreshTokenRequest.get(REFRESH))
-                .orElseThrow(() -> new RuntimeException("Token not found"));
-        if (jwt.getRefreshToken().isExpired() || jwt.getRefreshToken().getExpiration().isBefore(Instant.now())) {
-            throw new RuntimeException("Refresh token expired");
+        String refreshValue = refreshTokenRequest != null ? refreshTokenRequest.get(REFRESH) : null;
+        if (refreshValue == null || refreshValue.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token required");
+        }
+        Jwt jwt = this.iJwtRepository.findByRefreshToken(refreshValue)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+        RefreshToken rt = jwt.getRefreshToken();
+        if (rt == null || rt.isExpired() || rt.getExpiration().isBefore(Instant.now())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
         }
         this.disableTokens(jwt.getUser());
         return this.generate(jwt.getUser().getEmail(), false);

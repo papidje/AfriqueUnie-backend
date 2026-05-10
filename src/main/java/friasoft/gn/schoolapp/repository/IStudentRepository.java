@@ -93,6 +93,48 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         value = """
             select s from Student s
             join s.schoolClass sc
+            join sc.year y
+            where y.school.id = :schoolId
+              and y.active = true
+            """,
+        countQuery = """
+            select count(s) from Student s
+            join s.schoolClass sc
+            join sc.year y
+            where y.school.id = :schoolId
+              and y.active = true
+            """
+    )
+    Page<Student> findAllBySchoolIdAndActiveSchoolYear(@Param("schoolId") Long schoolId, Pageable pageable);
+
+    @Query(
+        value = """
+            select s from Student s
+            join s.schoolClass sc
+            join sc.year y
+            where y.school.id = :schoolId
+              and y.active = true
+              and sc.id in :classIds
+            """,
+        countQuery = """
+            select count(s) from Student s
+            join s.schoolClass sc
+            join sc.year y
+            where y.school.id = :schoolId
+              and y.active = true
+              and sc.id in :classIds
+            """
+    )
+    Page<Student> findAllBySchoolIdAndClassIdsAndActiveSchoolYear(
+        @Param("schoolId") Long schoolId,
+        @Param("classIds") Collection<Long> classIds,
+        Pageable pageable
+    );
+
+    @Query(
+        value = """
+            select s from Student s
+            join s.schoolClass sc
             where sc.id in :classIds
             """,
         countQuery = """
@@ -113,6 +155,15 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         where s.id = :id
         """)
     Optional<Student> findByIdWithParentsAndClass(@Param("id") Long id);
+
+    @Query("""
+        select distinct s from Student s
+        left join fetch s.father
+        left join fetch s.mother
+        where s.schoolClass.id = :classId
+        order by s.lastName asc, s.firstName asc
+        """)
+    List<Student> findBySchoolClassIdWithParents(@Param("classId") Long classId);
 
     @Query("""
         select distinct s.photoPath

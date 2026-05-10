@@ -12,13 +12,16 @@ public final class EvaluationDtos {
     private EvaluationDtos() {
     }
 
+    /**
+     * Le coefficient appliqué aux notes est celui de la liaison classe–matière ({@code class_subjects.coefficient}),
+     * recopié sur l’évaluation pour les requêtes ; il n’est pas saisi via cette API.
+     */
     public record CreateEvaluationRequest(
         Long classSubjectId,
         Long gradingPeriodId,
         String title,
         String description,
         EvaluationType type,
-        Double coefficient,
         Double maxScore,
         LocalDateTime startDate,
         LocalDateTime endDate
