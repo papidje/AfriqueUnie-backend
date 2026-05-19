@@ -125,4 +125,41 @@ public class NotificationService {
         javaMailSender.send(message);
         log.info("Mail de confirmation de changement de mot de passe envoyé à {}", user.getEmail());
     }
+
+    /**
+     * Compte déjà actif : information de rattachement à un ou plusieurs établissements (sans code d’activation).
+     */
+    public void sendSchoolAffiliationAttachedNotice(User user, java.util.List<String> schoolNames) {
+        if (schoolNames == null || schoolNames.isEmpty()) {
+            return;
+        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(mailFrom);
+        message.setTo(user.getEmail());
+        message.setSubject("Nouveau rattachement à un établissement");
+
+        String liste = String.join(", ", schoolNames);
+        String intro =
+            schoolNames.size() == 1
+                ? String.format("Vous avez été rattaché à un nouvel établissement : %s.", liste)
+                : String.format("Vous avez été rattaché à de nouveaux établissements : %s.", liste);
+
+        String body = String.format(
+            """
+            Bonjour %s,
+
+            %s
+
+            Connectez-vous à SchoolApp pour accéder à votre espace.
+
+            Cordialement,
+            L'équipe SchoolApp
+            """,
+            user.getFullname(),
+            intro
+        );
+        message.setText(body);
+        javaMailSender.send(message);
+        log.info("Mail de rattachement établissement(s) envoyé à {}", user.getEmail());
+    }
 }

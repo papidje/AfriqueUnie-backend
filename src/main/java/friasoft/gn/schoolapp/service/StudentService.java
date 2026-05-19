@@ -7,6 +7,7 @@ import friasoft.gn.schoolapp.entity.school.Student;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
+import friasoft.gn.schoolapp.security.SecurityAuthorityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +37,11 @@ public class StudentService implements IStudentService {
         return u;
     }
 
+    private static boolean currentUserHasTeacherAuthority() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_TEACHER".equals(a.getAuthority()));
+    }
+
     @Override
     @Transactional
     public Student save(Student student) {
@@ -61,7 +67,7 @@ public class StudentService implements IStudentService {
             }
             return repository.findAllBySchoolClassIdIn(ids, pageable);
         }
-        if (user.getRole() == User.UserRole.DIRECTOR) {
+        if (SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_DIRECTOR)) {
             Long sid = userRepository.findSchoolIdByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("École assignée manquante pour le directeur."));
             return repository.findAllBySchoolId(sid, pageable);
@@ -183,7 +189,7 @@ public class StudentService implements IStudentService {
     public List<Student> searchByLastName(String lastName) {
         User user = currentUser();
         List<Student> all = repository.findByLastNameContainingIgnoreCase(lastName);
-        if (user.getRole() == User.UserRole.TEACHER) {
+        if (currentUserHasTeacherAuthority()) {
             Optional<Set<Long>> tClasses = teacherTimetableAccessService.allowedSchoolClassIdsForCurrentUser();
             if (tClasses.isPresent()) {
                 Set<Long> set = tClasses.get();
@@ -196,7 +202,7 @@ public class StudentService implements IStudentService {
                     .toList();
             }
         }
-        if (user.getRole() != User.UserRole.DIRECTOR) {
+        if (!SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_DIRECTOR)) {
             return all;
         }
         Long sid = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);

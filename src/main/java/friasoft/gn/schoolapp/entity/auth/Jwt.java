@@ -36,4 +36,8 @@ public class Jwt {
 
     @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE})
     private User user;
+
+    /** Établissement porté par les claims du dernier access token (refresh conserve le contexte). */
+    @Column(name = "active_school_id")
+    private Long activeSchoolId;
 }

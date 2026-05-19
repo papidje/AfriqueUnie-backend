@@ -34,13 +34,13 @@ public class StudentController {
     private final FileStorageService fileStorageService;
     private final StudentDocumentService studentDocumentService;
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','TEACHER')")
     @GetMapping
     public Page<StudentResponse> getAll(Pageable pageable) {
         return service.findAll(pageable).map(mapper::toDto);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','TEACHER')")
     @GetMapping("/{id}")
     public ResponseEntity<StudentDetailResponse> getById(@PathVariable Long id) {
         return service.findById(id)
@@ -49,7 +49,7 @@ public class StudentController {
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','TEACHER')")
     @GetMapping("/by-class/{classId}")
     public List<StudentResponse> getByClass(@PathVariable Long classId) {
         try {
@@ -112,7 +112,7 @@ public class StudentController {
         return ResponseEntity.ok(mapper.toDetailDto(updated));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping(value = "/{id}/documents/enrollment-certificate", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> generateEnrollmentCertificate(@PathVariable Long id) {
         try {

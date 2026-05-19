@@ -29,7 +29,12 @@ public class TeacherTimetableAccessService {
      */
     public Optional<Set<Long>> allowedSchoolClassIdsForCurrentUser() {
         User u = currentUser();
-        if (u == null || u.getId() == null || u.getRole() != User.UserRole.TEACHER) {
+        if (u == null || u.getId() == null) {
+            return Optional.empty();
+        }
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null
+            || auth.getAuthorities().stream().noneMatch(a -> "ROLE_TEACHER".equals(a.getAuthority()))) {
             return Optional.empty();
         }
         return Optional.of(

@@ -8,7 +8,11 @@ public record UserResponse(
     String fullname,
     String email,
     boolean isActive,
-    List<String> roles
+    List<String> roles,
+    /** Affiliations pour le tenant courant (actives et en attente — voir {@link UserAffiliationResponse#active}). */
+    List<UserAffiliationResponse> activeAffiliations,
+    /** Libellé masquage annuaire multi-tenant ({@code show_info_to_tenant = false}), ex. « En attente d'acceptation ». */
+    String directoryPrivacyStatus
 ) {
 
 }

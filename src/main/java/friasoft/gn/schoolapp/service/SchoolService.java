@@ -5,7 +5,9 @@ import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
+import friasoft.gn.schoolapp.repository.UserSchoolAffiliationRepository;
 import friasoft.gn.schoolapp.security.SchoolSecurity;
+import friasoft.gn.schoolapp.security.SecurityAuthorityUtils;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,21 +26,18 @@ public class SchoolService {
     private final SchoolRepository schoolRepository;
     private final UserRepository userRepository;
     private final SchoolSecurity schoolSecurity;
+    private final UserSchoolAffiliationRepository userSchoolAffiliationRepository;
 
+    /**
+     * Établissements auxquels l’utilisateur connecté a accès dans l’UI (sélecteur d’école, profil, etc.).
+     * Priorité aux affiliations actives ; sinon repli sur {@code users.school_id} / tenant admin.
+     */
     public List<School> listForAuthenticatedUser() {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (user.getRole() == User.UserRole.SUPER_ADMIN) {
+        if (SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_SUPER_ADMIN)) {
             return List.of();
         }
-        if (user.getRole() == User.UserRole.DIRECTOR) {
-            if (user.getSchool() == null || user.getSchool().getId() == null) {
-                return List.of();
-            }
-            return schoolRepository.findById(user.getSchool().getId())
-                .map(List::of)
-                .orElse(List.of());
-        }
-        if (user.getRole() == User.UserRole.ADMIN_ECOLE) {
+        if (SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_ADMIN_ECOLE)) {
             Long tenantId = user.getOrganizationTenantId();
             if (tenantId == null) {
                 tenantId = user.getTenantId();
@@ -48,17 +47,11 @@ public class SchoolService {
             }
             return schoolRepository.findByTenantIdOrderByIdAsc(tenantId);
         }
-        if (user.getRole() == User.UserRole.STAFF
-            || user.getRole() == User.UserRole.TEACHER
-            || user.getRole() == User.UserRole.ACCOUNTANT) {
-            if (user.getSchool() == null || user.getSchool().getId() == null) {
-                return List.of();
-            }
-            return schoolRepository.findById(user.getSchool().getId())
-                .map(List::of)
-                .orElse(List.of());
-        }
-        return List.of();
+        /*
+         * Uniquement les affiliations actives : pas de repli sur {@code users.school_id}, sinon une suspension
+         * d’accès laisse encore un établissement « visible » et le front ne peut pas basculer sur l’écran dédié.
+         */
+        return userSchoolAffiliationRepository.findActiveSchoolsForUser(user.getId());
     }
 
     @Transactional
@@ -68,7 +61,7 @@ public class SchoolService {
         school.setId(null);
         school.setCreated_at(now);
         school.setUpdated_at(now);
-        if (user.getRole() == User.UserRole.ADMIN_ECOLE) {
+        if (SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_ADMIN_ECOLE)) {
             Long tid = user.getOrganizationTenantId();
             if (tid == null) {
                 tid = user.getTenantId();
@@ -78,7 +71,7 @@ public class SchoolService {
             }
             school.setTenantId(tid);
             school.setActive(false);
-        } else if (user.getRole() == User.UserRole.DIRECTOR) {
+        } else if (SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_DIRECTOR)) {
             School own = user.getSchool();
             if (own == null || own.getTenantId() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Établissement ou tenant directeur introuvable.");
@@ -157,7 +150,7 @@ public class SchoolService {
     public void assertCurrentUserCanAccessSchool(Long schoolId) {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Authentification requise.");
         }
         School school = schoolRepository.findById(schoolId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "École introuvable."));
