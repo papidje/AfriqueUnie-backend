@@ -41,5 +41,14 @@
     <include file="changes/v0_032.sql" relativeToChangelogFile="true"/>
     <include file="changes/v0_033.sql" relativeToChangelogFile="true"/>
     <include file="changes/v0_034.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_035.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_036.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_037.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_038.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_039.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_040.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_041.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_042.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_043.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

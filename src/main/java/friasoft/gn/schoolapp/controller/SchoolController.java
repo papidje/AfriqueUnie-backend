@@ -32,7 +32,7 @@ public class SchoolController {
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR', 'STAFF', 'TEACHER', 'ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE', 'DIRECTOR', 'STAFF', 'TEACHER')")
     @GetMapping
     public List<School> getSchools() {
         return this.schoolService.listForAuthenticatedUser();

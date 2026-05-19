@@ -12,11 +12,12 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 @Getter
 @Setter
@@ -30,17 +31,16 @@ import java.util.Collection;
 )
 @Filter(
     name = TenantHibernateFilterAspect.TENANT_FILTER_NAME,
-    condition = "coalesce(tenant_id, school_id) = :" + TenantHibernateFilterAspect.TENANT_FILTER_PARAM
+    condition = TenantHibernateFilterAspect.USER_TABLE_TENANT_FILTER_CONDITION
 )
 public class User implements UserDetails, TenantAware {
-    /** Valeurs persistées dans {@code schools.users.role} ; JWT = {@code ROLE_} + nom d’énum. */
+    /** Rôles métier par école {@link UserSchoolAffiliation} ; rôles plateforme {@link UserPlatformRole}. JWT = {@code ROLE_} + nom. */
     public enum UserRole {
         SUPER_ADMIN,
         ADMIN_ECOLE,
         DIRECTOR,
         STAFF,
-        TEACHER,
-        ACCOUNTANT
+        TEACHER
     }
 
     @Id
@@ -50,15 +50,15 @@ public class User implements UserDetails, TenantAware {
     @Column(nullable = false)
     private String fullname;
 
+    /**
+     * Unicité garantie en base par l’index {@code uk_users_email_lower} sur {@code lower(trim(email))}
+     * (voir Liquibase {@code v0_038.sql}) — pas de doublon pour un même e-mail, une fois normalisé en casse / espaces.
+     */
     private String email;
     @Column(nullable = false)
     private String password;
     @Column(name = "tenant_id")
     private Long tenantId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", length = 30)
-    private UserRole role = UserRole.STAFF;
 
     private boolean isActive = false;
 
@@ -66,11 +66,17 @@ public class User implements UserDetails, TenantAware {
     private Instant updatedAt = Instant.now();
 
     /**
-     * Établissement de rattachement (directeur, staff, enseignant, comptable). Absent pour le compte tenant ({@link UserRole#ADMIN_ECOLE}) et super admin.
+     * Établissement de rattachement principal (navigation, directeurs, multi-affiliations).
      */
     @JoinColumn(name = "school_id")
     @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.DETACH})
     private School school;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private List<UserSchoolAffiliation> affiliations = new ArrayList<>();
+
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private UserPlatformRole platformRole;
 
     private Instant lastLoginAt = Instant.now();
 
@@ -78,8 +84,8 @@ public class User implements UserDetails, TenantAware {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        UserRole effectiveRole = this.role != null ? this.role : UserRole.STAFF;
-        return java.util.List.of(new SimpleGrantedAuthority("ROLE_" + effectiveRole.name()));
+        /* Les autorités effectives viennent du JWT ({@link friasoft.gn.schoolapp.security.JwtService}). */
+        return List.of();
     }
 
     @Override
@@ -91,19 +97,25 @@ public class User implements UserDetails, TenantAware {
         return this.email;
     }
 
+    /**
+     * Seul {@link #isEnabled()} reflète {@link #isActive} (compte activé par mail).
+     * Les autres indicateurs {@link UserDetails} sont à {@code true} tant qu’on n’a pas de verrouillage
+     * / expiration métier dédiés ; sinon un compte inactif déclenche {@link org.springframework.security.authentication.LockedException}
+     * avant {@link org.springframework.security.authentication.DisabledException} (ordre Spring Security).
+     */
     @Override
     public boolean isAccountNonExpired() {
-        return this.isActive;
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return this.isActive;
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return this.isActive;
+        return true;
     }
 
     @Override

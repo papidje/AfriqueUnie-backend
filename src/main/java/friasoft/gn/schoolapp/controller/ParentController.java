@@ -21,7 +21,7 @@ public class ParentController {
 
     private final ParentService parentService;
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/by-school/{schoolId}/active-year-enrolled")
     public List<ParentSchoolListRow> listForSchoolActiveYear(@PathVariable Long schoolId) {
         try {

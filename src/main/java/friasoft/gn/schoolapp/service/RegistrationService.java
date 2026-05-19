@@ -4,8 +4,10 @@ import friasoft.gn.schoolapp.dto.RegistrationRequest;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.entity.tenant.Tenant;
+import friasoft.gn.schoolapp.entity.auth.UserPlatformRole;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.TenantRepository;
+import friasoft.gn.schoolapp.repository.UserPlatformRoleRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,6 +22,7 @@ public class RegistrationService {
     private final TenantRepository tenantRepository;
     private final SchoolRepository schoolRepository;
     private final UserRepository userRepository;
+    private final UserPlatformRoleRepository userPlatformRoleRepository;
     private final UserService userService;
     private final BCryptPasswordEncoder passwordEncoder;
 
@@ -53,7 +56,6 @@ public class RegistrationService {
         user.setUsername(request.username() != null ? request.username() : request.email());
         user.setFullname(request.fullname());
         user.setEmail(request.email());
-        user.setRole(User.UserRole.ADMIN_ECOLE);
         user.setTenantId(tenant.getId());
         user.setSchool(school);
         // Mot de passe initial technique: le vrai mot de passe est défini à l’activation.
@@ -61,6 +63,10 @@ public class RegistrationService {
         user.setActive(false);
 
         User saved = userRepository.save(user);
+        UserPlatformRole pr = new UserPlatformRole();
+        pr.setUser(saved);
+        pr.setRole(User.UserRole.ADMIN_ECOLE);
+        userPlatformRoleRepository.save(pr);
         userService.sendActivationEmail(saved);
         return saved;
     }

@@ -31,6 +31,7 @@ public class ClassSubjectService {
     private final SubjectService subjectService;
     private final UserRepository userRepository;
     private final SchoolService schoolService;
+    private final UserCapabilityService userCapabilityService;
 
     @Transactional(readOnly = true)
     public ClassPlanningView getPlanning(Long classId) {
@@ -134,10 +135,10 @@ public class ClassSubjectService {
     private User loadValidatedTeacher(Long teacherId, SchoolClass clazz) {
         User teacher = userRepository.findById(teacherId)
             .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable."));
-        if (teacher.getRole() != User.UserRole.TEACHER) {
+        School school = clazz.getYear().getSchool();
+        if (!userCapabilityService.hasActiveAffiliationRole(teacher, school.getId(), User.UserRole.TEACHER)) {
             throw new IllegalArgumentException("Seul un utilisateur avec le rôle TEACHER peut être assigné.");
         }
-        School school = clazz.getYear().getSchool();
         if (userRepository.countTeacherAssignableToSchool(teacher.getId(), school.getId(), school.getTenantId()) < 1) {
             throw new IllegalArgumentException("Ce professeur n’est pas rattaché à l’établissement de la classe.");
         }

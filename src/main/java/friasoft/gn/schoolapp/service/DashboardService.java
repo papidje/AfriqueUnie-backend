@@ -9,6 +9,7 @@ import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
+import friasoft.gn.schoolapp.security.SecurityAuthorityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -66,7 +67,7 @@ public class DashboardService {
         if (!(authentication.getPrincipal() instanceof User user)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
-        long schoolId = resolveDashboardSchoolId(user, requestedSchoolId);
+        long schoolId = resolveDashboardSchoolId(authentication, user, requestedSchoolId);
         schoolService.assertCurrentUserCanAccessSchool(schoolId);
 
         YearMonth currentMonth = YearMonth.now();
@@ -108,46 +109,47 @@ public class DashboardService {
     /**
      * Détermine l’établissement pour les indicateurs (pas l’agrégat tenant entier).
      */
-    private long resolveDashboardSchoolId(User user, Long requestedSchoolId) {
-        final boolean singleSchoolProfile = user.getRole() == User.UserRole.STAFF
-            || user.getRole() == User.UserRole.TEACHER
-            || user.getRole() == User.UserRole.ACCOUNTANT;
+    private long resolveDashboardSchoolId(Authentication authentication, User user, Long requestedSchoolId) {
+        final boolean singleSchoolStaffLike = isSingleSchoolStaffLike(authentication);
 
         if (requestedSchoolId != null) {
-            if (user.getRole() == User.UserRole.DIRECTOR) {
-                Long directorSchool = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);
-                if (directorSchool != null && !directorSchool.equals(requestedSchoolId)) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Établissement non autorisé pour ce compte.");
-                }
-            }
-            // ADMIN_ECOLE peut avoir un school_id (ex. école créée à l’inscription) tout en parcourant tout le tenant :
-            // ne pas confondre avec STAFF / TEACHER / ACCOUNTANT, liés à une seule école.
-            if (singleSchoolProfile) {
-                Long staffSchool = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);
-                if (staffSchool != null && !staffSchool.equals(requestedSchoolId)) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Établissement non autorisé pour ce compte.");
-                }
-            }
+            // L’accès effectif est contrôlé par assertCurrentUserCanAccessSchool (affiliations / plateforme).
+            // Ne pas comparer à users.school_id : profils multi-écoles ou invitations cross-tenant ont une école
+            // JWT différente de la colonne legacy users.school_id.
             return requestedSchoolId;
         }
-        if (user.getRole() == User.UserRole.DIRECTOR) {
+        if (SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_DIRECTOR)) {
             Long directorSchoolId = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);
             if (directorSchoolId != null) {
                 return directorSchoolId;
             }
         }
-        if (singleSchoolProfile) {
+        if (singleSchoolStaffLike) {
             Long staffSchoolId = userRepository.findSchoolIdByUserId(user.getId()).orElse(null);
             if (staffSchoolId != null) {
                 return staffSchoolId;
             }
         }
-        if (user.getRole() == User.UserRole.ADMIN_ECOLE && user.getOrganizationTenantId() != null) {
+        if (SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_ADMIN_ECOLE)
+            && user.getOrganizationTenantId() != null) {
             List<School> schools = schoolRepository.findByTenantIdOrderByIdAsc(user.getOrganizationTenantId());
             if (schools.size() == 1) {
                 return schools.get(0).getId();
             }
         }
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paramètre schoolId obligatoire.");
+    }
+
+    private boolean isSingleSchoolStaffLike(Authentication authentication) {
+        if (authentication == null
+            || SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_SUPER_ADMIN)
+            || SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_ADMIN_ECOLE)
+            || SecurityAuthorityUtils.hasAuthority(SecurityAuthorityUtils.ROLE_DIRECTOR)) {
+            return false;
+        }
+        return authentication.getAuthorities().stream().anyMatch(a -> {
+            String ga = a.getAuthority();
+            return "ROLE_TEACHER".equals(ga) || "ROLE_STAFF".equals(ga);
+        });
     }
 }

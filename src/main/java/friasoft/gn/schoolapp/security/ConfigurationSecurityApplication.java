@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -32,15 +34,18 @@ public class ConfigurationSecurityApplication {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtFilter jwtFilter;
     private final UserDetailsService userDetailsService;
+    private final ObjectMapper objectMapper;
 
     public ConfigurationSecurityApplication(
         BCryptPasswordEncoder passwordEncoder,
         JwtFilter jwtFilter,
-        UserDetailsService userDetailsService
+        UserDetailsService userDetailsService,
+        ObjectMapper objectMapper
     ) {
         this.passwordEncoder = passwordEncoder;
         this.jwtFilter = jwtFilter;
         this.userDetailsService = userDetailsService;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -51,10 +56,16 @@ public class ConfigurationSecurityApplication {
                 //.csrf(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
-                    // Auth endpoints
+                    .requestMatchers(HttpMethod.POST, "/auth/switch-school").authenticated()
+                    // Auth endpoints (login, refresh, etc.)
                     .requestMatchers("/auth/**").permitAll()
                     // Fichiers publics (logos, photos) — requis pour <img src="…/api/rest/uploads/…"> sans en-tête Authorization
                     .requestMatchers("/uploads/**").permitAll()
+                    /*
+                     * Centre in-app : lecture authentifiée uniquement ; pas d’affiliation école active requise.
+                     * Le {@link JwtFilter} autorise en plus ces GET lorsque le JWT ne porte pas de tenant résolu.
+                     */
+                    .requestMatchers(HttpMethod.GET, "/notifications", "/notifications/unread-count").authenticated()
                     // Super admin (context-path /api/rest en préfixe réel)
                     .requestMatchers("/super-admin/**").hasRole("SUPER_ADMIN")
                     .requestMatchers("/superadmin/**").hasRole("SUPER_ADMIN")
@@ -64,6 +75,13 @@ public class ConfigurationSecurityApplication {
                 .sessionManagement(httpSecuritySessionManagementConfigurer ->
                     httpSecuritySessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) ->
+                    ProblemDetailHttpResponses.writeForbidden(
+                        response,
+                        objectMapper,
+                        "Accès refusé : vous n’avez pas les droits nécessaires pour cette action."
+                    )
+                ))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -97,6 +115,8 @@ public class ConfigurationSecurityApplication {
         DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
         daoAuthenticationProvider.setUserDetailsService(userDetailsService);
         daoAuthenticationProvider.setPasswordEncoder(passwordEncoder);
+        // Permet de distinguer e-mail inconnu (UsernameNotFoundException) et mot de passe incorrect (BadCredentialsException).
+        daoAuthenticationProvider.setHideUserNotFoundExceptions(false);
         return daoAuthenticationProvider;
     }
 }

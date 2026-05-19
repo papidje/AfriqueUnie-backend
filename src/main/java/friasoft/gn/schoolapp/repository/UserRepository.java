@@ -12,9 +12,12 @@ public interface UserRepository extends JpaRepository<User, Long>{
 
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByEmailIgnoreCase(String email);
+
     @Query("""
         SELECT u FROM User u
         LEFT JOIN FETCH u.school
+        LEFT JOIN FETCH u.platformRole
         WHERE u.email = :email
         """)
     Optional<User> findByEmailWithSchoolScopes(@Param("email") String email);
@@ -28,9 +31,13 @@ public interface UserRepository extends JpaRepository<User, Long>{
     List<User> searchByKeywordAndNoSchool(@Param("term") String keyword);
 
     @Query("""
-        SELECT u FROM User u
-        WHERE u.role = friasoft.gn.schoolapp.entity.auth.User$UserRole.TEACHER
+        SELECT DISTINCT u FROM User u
+        JOIN u.affiliations a
+        WHERE a.school.id = :schoolId AND a.active = true AND a.role = friasoft.gn.schoolapp.entity.auth.User$UserRole.TEACHER
         AND u.isActive = true
+        AND NOT EXISTS (
+            SELECT 1 FROM UserPlatformRole pr WHERE pr.id = u.id AND pr.role = friasoft.gn.schoolapp.entity.auth.User$UserRole.SUPER_ADMIN
+        )
         AND (
             (:schoolTenantId IS NOT NULL AND u.tenantId IS NOT NULL AND u.tenantId = :schoolTenantId)
             OR (u.school IS NOT NULL AND u.school.id = :schoolId)
@@ -41,8 +48,9 @@ public interface UserRepository extends JpaRepository<User, Long>{
 
     @Query("""
         SELECT COUNT(u) FROM User u
+        JOIN u.affiliations a
         WHERE u.id = :userId
-        AND u.role = friasoft.gn.schoolapp.entity.auth.User$UserRole.TEACHER
+        AND a.school.id = :schoolId AND a.active = true AND a.role = friasoft.gn.schoolapp.entity.auth.User$UserRole.TEACHER
         AND u.isActive = true
         AND (
             (:schoolTenantId IS NOT NULL AND u.tenantId IS NOT NULL AND u.tenantId = :schoolTenantId)
@@ -55,7 +63,20 @@ public interface UserRepository extends JpaRepository<User, Long>{
         @Param("schoolTenantId") Long schoolTenantId
     );
 
-    /** {@code school_id} : directeur, staff, enseignant, comptable ; absent pour admin organisation / super admin. */
+    @Query(
+        """
+            SELECT DISTINCT u FROM User u JOIN u.affiliations a
+            WHERE a.school.id = :schoolId AND a.active = true
+            AND a.role IN (friasoft.gn.schoolapp.entity.auth.User$UserRole.TEACHER, friasoft.gn.schoolapp.entity.auth.User$UserRole.STAFF)
+            AND NOT EXISTS (
+                SELECT 1 FROM UserPlatformRole pr WHERE pr.id = u.id AND pr.role = friasoft.gn.schoolapp.entity.auth.User$UserRole.SUPER_ADMIN
+            )
+            ORDER BY u.fullname ASC
+            """
+    )
+    List<User> findDistinctUsersWithActiveTeacherStaffAtSchool(@Param("schoolId") Long schoolId);
+
+    /** {@code school_id} : directeur, staff, enseignant ; absent pour admin organisation / super admin. */
     @Query("select u.school.id from User u where u.id = :userId and u.school is not null")
     Optional<Long> findSchoolIdByUserId(@Param("userId") Long userId);
 }

@@ -33,7 +33,7 @@ public class FinanceController {
     private final FinanceService financeService;
     private final PaymentReceiptPdfService paymentReceiptPdfService;
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/status/{classId}")
     public List<StudentPaymentStatusDTO> getStatusByClass(@PathVariable Long classId) {
         try {
@@ -43,7 +43,7 @@ public class FinanceController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/payments/student/{studentId}")
     public List<StudentPaymentLedgerRowDTO> listStudentPayments(@PathVariable Long studentId) {
         try {
@@ -53,7 +53,7 @@ public class FinanceController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/payment-info/{studentId}")
     public StudentPaymentInfoDTO getPaymentInfo(@PathVariable Long studentId) {
         try {
@@ -63,7 +63,7 @@ public class FinanceController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PostMapping("/payments/{studentId}")
     public CreatePaymentResponse createPayment(@PathVariable Long studentId, @RequestBody CreatePaymentRequest request) {
         try {
@@ -73,7 +73,7 @@ public class FinanceController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/receipt/{studentId}")
     public PaymentReceiptView getReceiptDuplicate(
         @PathVariable Long studentId,
@@ -86,7 +86,7 @@ public class FinanceController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping(value = "/receipt/{studentId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> getReceiptPdf(
         @PathVariable Long studentId,

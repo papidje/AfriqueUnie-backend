@@ -19,7 +19,7 @@ public class ActivationController {
     private ActivationService activationService;
     private ActivationMapper activationMapper;
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
+    @PreAuthorize("@userMgmtSecurity.canManageDirectory(authentication)")
     @GetMapping()
     public List<ActivationResponse> getAll() {
         return this.activationService.getAll()

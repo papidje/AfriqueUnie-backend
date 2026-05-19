@@ -13,7 +13,7 @@ public final class SchoolUiSecurityExpressions {
     }
 
     public static final String READ =
-        "hasAnyRole('ADMIN_ECOLE','DIRECTOR','STAFF','TEACHER','ACCOUNTANT')";
+        "hasAnyRole('ADMIN_ECOLE','DIRECTOR','STAFF','TEACHER')";
 
     public static final String WRITE =
         "hasAnyRole('ADMIN_ECOLE','DIRECTOR','STAFF')";

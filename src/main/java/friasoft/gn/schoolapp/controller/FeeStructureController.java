@@ -18,13 +18,13 @@ public class FeeStructureController {
 
     private final FeeStructureService feeStructureService;
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping
     public List<FeeStructureResponse> listBySchoolYear(@RequestParam Long schoolYearId) {
         return feeStructureService.listBySchoolYear(schoolYearId);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR','ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/{id}")
     public FeeStructureResponse getById(@PathVariable Long id) {
         return feeStructureService.getById(id);
