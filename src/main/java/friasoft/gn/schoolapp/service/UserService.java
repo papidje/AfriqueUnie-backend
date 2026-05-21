@@ -3,6 +3,7 @@ package friasoft.gn.schoolapp.service;
 import friasoft.gn.schoolapp.dto.ActivationRequest;
 import friasoft.gn.schoolapp.dto.InviteUserDTO;
 import friasoft.gn.schoolapp.dto.InviteUserResponse;
+import friasoft.gn.schoolapp.dto.OwnProfileUpdateRequest;
 import friasoft.gn.schoolapp.dto.SchoolRoleAssignmentDTO;
 import friasoft.gn.schoolapp.dto.UpdateUserAffiliationsRequest;
 import friasoft.gn.schoolapp.dto.UserAffiliationResponse;
@@ -38,6 +39,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.hibernate.Session;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -225,7 +227,7 @@ public class UserService implements UserDetailsService{
             return inviteExistingUser(current, existingOpt.get(), invitedRole, directorSchoolId, normalized);
         }
 
-        return inviteNewUser(current, request, emailNorm, invitedRole, directorSchoolId, normalized);
+        return inviteNewUser(current, emailNorm, invitedRole, directorSchoolId, normalized);
     }
 
     /**
@@ -586,7 +588,6 @@ public class UserService implements UserDetailsService{
 
     private InviteUserResponse inviteNewUser(
         User current,
-        InviteUserDTO request,
         String emailNorm,
         User.UserRole invitedRole,
         Long directorSchoolId,
@@ -601,11 +602,8 @@ public class UserService implements UserDetailsService{
 
         User user = new User();
         user.setUsername(emailNorm);
-        String displayName =
-            request.nom() != null && !request.nom().isBlank()
-                ? request.nom().trim()
-                : emailNorm.substring(0, Math.max(emailNorm.indexOf('@'), 1));
-        user.setFullname(displayName);
+        /* Nom affiché provisoire : la personne invitée renseignera son identité à l’activation / dans son profil. */
+        user.setFullname(provisionalFullnameFromEmail(emailNorm));
         user.setEmail(emailNorm);
         user.setSchool(plan.primarySchool);
         user.setTenantId(plan.tenantId);
@@ -639,6 +637,14 @@ public class UserService implements UserDetailsService{
         String activationCode = activation.getCode();
         log.info("Invitation : mail d'activation envoyé à {} (code trace serveur : {})", user.getEmail(), activationCode);
         return new InviteUserResponse("Utilisateur invité avec succès.", activationCode);
+    }
+
+    private static String provisionalFullnameFromEmail(String emailNorm) {
+        int at = emailNorm.indexOf('@');
+        if (at > 0) {
+            return emailNorm.substring(0, at);
+        }
+        return emailNorm.isEmpty() ? "Invité" : emailNorm;
     }
 
     private static List<SchoolRoleAssignmentDTO> normalizeSchoolAssignments(
@@ -786,22 +792,99 @@ public class UserService implements UserDetailsService{
     }
 
     /**
-     * Met à jour le nom affiché du compte connecté.
+     * Met à jour le profil du compte connecté ; {@link User#getFullname()} est synchronisé (JWT / UI).
      */
     @Transactional
-    public User updateOwnProfile(User principal, String fullname) {
-        if (fullname == null || fullname.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le nom complet est requis.");
-        }
-        String trimmed = fullname.trim();
-        if (trimmed.length() > 255) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le nom complet est trop long.");
+    public User updateOwnProfile(User principal, OwnProfileUpdateRequest body) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Corps de requête requis.");
         }
         User user = this.userRepository.findById(principal.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable."));
-        user.setFullname(trimmed);
+
+        String lastName = trimNullToEmpty(body.lastName());
+        String firstName = trimNullToEmpty(body.firstName());
+        if (lastName.isEmpty()) {
+            String legacy = body.fullname() != null ? body.fullname().trim() : "";
+            if (!legacy.isEmpty()) {
+                lastName = legacy.length() > 255 ? legacy.substring(0, 255) : legacy;
+            }
+        }
+        if (lastName.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le nom est requis.");
+        }
+        if (firstName.length() > 255 || lastName.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Prénom ou nom trop long.");
+        }
+
+        String genderNormalized = normalizeProfileGender(body.gender());
+
+        String phone = trimNullToEmpty(body.phone());
+        if (phone.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le numéro de téléphone est trop long.");
+        }
+        if (phone.isEmpty()) {
+            phone = null;
+        }
+
+        String biography = body.biography() != null ? body.biography().trim() : null;
+        if (biography != null && biography.length() > 12_000) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Le texte « informations complémentaires » est trop long."
+            );
+        }
+        if (biography != null && biography.isEmpty()) {
+            biography = null;
+        }
+
+        LocalDate birthDate = body.birthDate();
+        if (birthDate != null && birthDate.isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La date de naissance ne peut pas être dans le futur.");
+        }
+
+        user.setFirstName(firstName.isEmpty() ? null : firstName);
+        user.setLastName(lastName);
+        user.setBirthDate(birthDate);
+        user.setGender(genderNormalized);
+        user.setPhone(phone);
+        user.setBiography(biography);
+
+        String composed = composeFullName(user.getFirstName(), user.getLastName());
+        if (composed.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La concaténation prénom + nom dépasse 255 caractères.");
+        }
+        user.setFullname(composed);
         user.setUpdatedAt(Instant.now());
         return this.userRepository.save(user);
+    }
+
+    private static String trimNullToEmpty(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    private static String composeFullName(String firstName, String lastName) {
+        String fn = trimNullToEmpty(firstName);
+        String ln = trimNullToEmpty(lastName);
+        if (fn.isEmpty()) {
+            return ln;
+        }
+        if (ln.isEmpty()) {
+            return fn;
+        }
+        return fn + " " + ln;
+    }
+
+    /** {@code null} si vide ; sinon {@code MALE} ou {@code FEMALE}. */
+    private static String normalizeProfileGender(String gender) {
+        String g = gender != null ? gender.trim().toUpperCase(Locale.ROOT) : "";
+        if (g.isEmpty()) {
+            return null;
+        }
+        if ("MALE".equals(g) || "FEMALE".equals(g)) {
+            return g;
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valeur de sexe invalide (Homme ou Femme).");
     }
 
     private Activation createActivation(User user) {

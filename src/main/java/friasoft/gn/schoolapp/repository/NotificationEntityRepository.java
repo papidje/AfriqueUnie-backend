@@ -12,7 +12,8 @@ public interface NotificationEntityRepository extends JpaRepository<Notification
 
     /**
      * Notifications ciblées et encore affichables : pas d’état lu, ou état avec {@code is_visible = true}.
-     * {@code LEFT JOIN} sur l’état de lecture pour l’utilisateur courant uniquement.
+     * {@code USER_TARGETED} : uniquement {@code target_user_id} — ne pas diffuser via {@code target_school_id}
+     * (sinon tout personnel encore actif sur l’établissement voit la suspension d’un collègue).
      */
     @Query(
         """
@@ -20,7 +21,7 @@ public interface NotificationEntityRepository extends JpaRepository<Notification
             LEFT JOIN NotificationReadState r ON r.notification.id = n.id AND r.user.id = :userId
             WHERE (
                 n.targetUser.id = :userId
-                OR (n.targetSchool IS NOT NULL AND EXISTS (
+                OR (n.type <> NotificationType.USER_TARGETED AND n.targetSchool IS NOT NULL AND EXISTS (
                     SELECT 1 FROM UserSchoolAffiliation a
                     WHERE a.user.id = :userId AND a.active = true AND a.school.id = n.targetSchool.id
                 ))
@@ -40,7 +41,7 @@ public interface NotificationEntityRepository extends JpaRepository<Notification
             SELECT n FROM NotificationEntity n
             WHERE (
                 n.targetUser.id = :userId
-                OR (n.targetSchool IS NOT NULL AND EXISTS (
+                OR (n.type <> NotificationType.USER_TARGETED AND n.targetSchool IS NOT NULL AND EXISTS (
                     SELECT 1 FROM UserSchoolAffiliation a
                     WHERE a.user.id = :userId AND a.active = true AND a.school.id = n.targetSchool.id
                 ))
@@ -67,7 +68,7 @@ public interface NotificationEntityRepository extends JpaRepository<Notification
             WHERE n.id = :notificationId
             AND (
                 n.targetUser.id = :userId
-                OR (n.targetSchool IS NOT NULL AND EXISTS (
+                OR (n.type <> NotificationType.USER_TARGETED AND n.targetSchool IS NOT NULL AND EXISTS (
                     SELECT 1 FROM UserSchoolAffiliation a
                     WHERE a.user.id = :userId AND a.active = true AND a.school.id = n.targetSchool.id
                 ))
@@ -86,7 +87,7 @@ public interface NotificationEntityRepository extends JpaRepository<Notification
             SELECT COUNT(n) FROM NotificationEntity n
             WHERE (
                 n.targetUser.id = :userId
-                OR (n.targetSchool IS NOT NULL AND EXISTS (
+                OR (n.type <> NotificationType.USER_TARGETED AND n.targetSchool IS NOT NULL AND EXISTS (
                     SELECT 1 FROM UserSchoolAffiliation a
                     WHERE a.user.id = :userId AND a.active = true AND a.school.id = n.targetSchool.id
                 ))
