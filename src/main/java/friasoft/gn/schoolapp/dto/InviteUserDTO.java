@@ -6,7 +6,6 @@ import java.util.List;
 
 public record InviteUserDTO(
     String email,
-    String nom,
     User.UserRole role,
     /**
      * Ancien flux : une école + {@link #role()}. Ignoré si {@link #schoolAssignments()} est fourni.

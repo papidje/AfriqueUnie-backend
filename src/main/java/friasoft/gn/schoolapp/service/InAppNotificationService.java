@@ -72,7 +72,8 @@ public class InAppNotificationService {
         n.setCreatedAt(LocalDateTime.now());
         n.setLinkId(null);
         n.setTargetUser(targetUser);
-        n.setTargetSchool(school);
+        /* Pas de targetSchool : sinon la JPQL diffuse aux autres actifs de l’établissement (ex. l’admin qui suspend). */
+        n.setTargetSchool(null);
         notificationRepository.save(n);
     }
 

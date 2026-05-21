@@ -33,11 +33,13 @@ public class RegistrationService {
             throw new RuntimeException("Email deja utilisé");
         });
 
-        String address = normalizeBlankToNull(request.tenantAddress());
+        String fn = trimToNull(request.adminFirstName());
+        String ln = trimToNull(request.adminLastName());
+        String schoolAddressNorm = normalizeBlankToNull(request.schoolAddress());
 
         Tenant tenant = new Tenant();
         tenant.setName(request.tenantName());
-        tenant.setAddress(address);
+        tenant.setAddress(schoolAddressNorm);
         tenant.setLogo(request.tenantLogo());
         tenant = tenantRepository.save(tenant);
 
@@ -45,7 +47,7 @@ public class RegistrationService {
         School school = new School();
         school.setTenantId(tenant.getId());
         school.setName(resolvedSchoolName);
-        school.setAdress(address);
+        school.setAdress(schoolAddressNorm);
         school.setContact(normalizeBlankToNull(request.schoolContact()));
         school.setLogo(request.tenantLogo());
         school.setActive(false);
@@ -54,7 +56,9 @@ public class RegistrationService {
 
         User user = new User();
         user.setUsername(request.username() != null ? request.username() : request.email());
-        user.setFullname(request.fullname());
+        user.setFirstName(fn);
+        user.setLastName(ln);
+        user.setFullname(composeFullName(fn, ln));
         user.setEmail(request.email());
         user.setTenantId(tenant.getId());
         user.setSchool(school);
@@ -85,11 +89,17 @@ public class RegistrationService {
         if (request.tenantName() == null || request.tenantName().isBlank()) {
             throw new RuntimeException("Nom du tenant obligatoire");
         }
-        if (request.tenantAddress() == null || request.tenantAddress().isBlank()) {
-            throw new RuntimeException("Adresse obligatoire");
+        if (request.schoolAddress() == null || request.schoolAddress().isBlank()) {
+            throw new RuntimeException("Adresse de l'établissement obligatoire");
         }
         if (request.schoolContact() == null || request.schoolContact().isBlank()) {
             throw new RuntimeException("Téléphone obligatoire");
+        }
+        if (trimToNull(request.adminFirstName()) == null) {
+            throw new RuntimeException("Prénom de l'administrateur obligatoire");
+        }
+        if (trimToNull(request.adminLastName()) == null) {
+            throw new RuntimeException("Nom de l'administrateur obligatoire");
         }
     }
 
@@ -99,5 +109,26 @@ public class RegistrationService {
         }
         String t = value.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    /** Chaîne non vide après trim, sinon {@code null}. */
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String t = value.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private static String composeFullName(String firstName, String lastName) {
+        String fn = firstName == null ? "" : firstName.trim();
+        String ln = lastName == null ? "" : lastName.trim();
+        if (fn.isEmpty()) {
+            return ln;
+        }
+        if (ln.isEmpty()) {
+            return fn;
+        }
+        return fn + " " + ln;
     }
 }

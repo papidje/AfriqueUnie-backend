@@ -65,8 +65,7 @@ public class UserController {
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
-        String fullname = body != null ? body.fullname() : null;
-        User updated = this.userService.updateOwnProfile(user, fullname);
+        User updated = this.userService.updateOwnProfile(user, body);
         return this.mapToUserProfileResponse(updated);
     }
 
@@ -200,6 +199,12 @@ public class UserController {
             user.getId(),
             user.getUsername(),
             privacyMask ? null : user.getFullname(),
+            privacyMask ? null : user.getFirstName(),
+            privacyMask ? null : user.getLastName(),
+            privacyMask ? null : user.getBirthDate(),
+            privacyMask ? null : user.getGender(),
+            privacyMask ? null : user.getPhone(),
+            privacyMask ? null : user.getBiography(),
             user.getEmail(),
             user.isActive(),
             effectiveRoles,
@@ -227,6 +232,12 @@ public class UserController {
         return new UserProfileResponse(
             user.getUsername(),
             user.getFullname(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getBirthDate(),
+            user.getGender(),
+            user.getPhone(),
+            user.getBiography(),
             user.getEmail(),
             user.isActive(),
             effectiveRoles,
