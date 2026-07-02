@@ -63,7 +63,7 @@ public class PaymentConfirmationMailService {
                 log.debug("Aucun e-mail parent pour confirmation paiement (élève {}).", student.getId());
                 return;
             }
-            byte[] pdf = paymentReceiptPdfService.buildReceiptPdf(student.getId(), receiptReference.trim());
+            byte[] pdf = paymentReceiptPdfService.buildReceiptPdf(student.getId(), receiptReference.trim(), false);
             String safeFileBase = safeAttachmentBase(receiptReference);
             String attachmentName = "reçu-" + safeFileBase + ".pdf";
 

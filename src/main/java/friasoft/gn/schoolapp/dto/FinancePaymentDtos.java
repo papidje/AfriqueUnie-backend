@@ -44,6 +44,8 @@ public final class FinancePaymentDtos {
         LocalDateTime paymentDate,
         List<ReceiptLine> lines,
         Double totalCollected,
+        /** Reliquat dû après cet encaissement (état comptable post-paiement). */
+        Double balanceRemaining,
         boolean duplicate
     ) {}
 }

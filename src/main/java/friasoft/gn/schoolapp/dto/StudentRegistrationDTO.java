@@ -7,7 +7,14 @@ public record StudentRegistrationDTO(
     String firstName,
     String lastName,
     LocalDate birthDate,
+    String birthPlace,
+    String nationality,
+    String address,
+    String communicationPhone,
+    String communicationEmail,
     String emergencyContactName,
-    String emergencyContactPhone
+    String emergencyContactPhone,
+    String bloodGroup,
+    String allergies
 ) {}
 

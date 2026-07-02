@@ -31,8 +31,8 @@ public class PaymentReceiptPdfService {
     private final SchoolDocumentBranding schoolDocumentBranding;
     private final PdfService pdfService;
 
-    public byte[] buildReceiptPdf(Long studentId, String reference) {
-        PaymentReceiptView view = financeService.getReceiptDuplicate(studentId, reference);
+    public byte[] buildReceiptPdf(Long studentId, String reference, boolean duplicate) {
+        PaymentReceiptView view = financeService.getReceipt(studentId, reference, duplicate);
         Student student = studentRepository.findByIdWithParentsAndClass(studentId)
             .orElseThrow(() -> new IllegalStateException("Élève introuvable."));
         if (student.getSchoolClass() == null || student.getSchoolClass().getYear() == null
@@ -54,6 +54,7 @@ public class PaymentReceiptPdfService {
         model.put("totalAmount", formatAmount(view.totalCollected(), view.currency()));
         model.put("totalInWords", GnfAmountInWords.format(view.totalCollected() != null ? view.totalCollected() : 0d));
         model.put("duplicate", view.duplicate());
+        model.put("balanceRemaining", formatAmount(view.balanceRemaining(), view.currency()));
         model.put("receiptLineRows", buildLineRows(view));
 
         return pdfService.renderFromTemplate("documents/recu-paiement", model);

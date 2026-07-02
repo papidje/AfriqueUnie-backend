@@ -9,6 +9,7 @@ import friasoft.gn.schoolapp.entity.school.Student;
 import friasoft.gn.schoolapp.entity.school.StudentAccount;
 import friasoft.gn.schoolapp.repository.IStudentAccountRepository;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
+import friasoft.gn.schoolapp.util.GuineaContactValidation;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -59,10 +60,18 @@ public class StudentRegistrationService {
             throw new IllegalArgumentException("birthDate obligatoire.");
         }
         student.setBirthDate(studentDto.birthDate());
+        student.setBirthPlace(trimToNull(studentDto.birthPlace()));
+        student.setNationality(trimToNull(studentDto.nationality()));
+        student.setAddress(trimToNull(studentDto.address()));
+        student.setCommunicationPhone(normalizePhoneOrNull(studentDto.communicationPhone()));
+        student.setCommunicationEmail(trimToNull(studentDto.communicationEmail()));
+        validateOptionalEmail(studentDto.communicationEmail(), "Email de communication");
         student.setFather(father);
         student.setMother(mother);
-        student.setEmergencyContactName(nonBlank(studentDto.emergencyContactName(), "Emergency contact name obligatoire."));
-        student.setEmergencyContactPhone(nonBlank(studentDto.emergencyContactPhone(), "Emergency contact phone obligatoire."));
+        student.setEmergencyContactName(trimToNull(studentDto.emergencyContactName()));
+        student.setEmergencyContactPhone(normalizePhoneOrNull(studentDto.emergencyContactPhone()));
+        student.setBloodGroup(trimToNull(studentDto.bloodGroup()));
+        student.setAllergies(trimToNull(studentDto.allergies()));
         student.setSchoolClass(loaded.schoolClass());
         student.setTenantId(tenantId);
 
@@ -105,6 +114,8 @@ public class StudentRegistrationService {
             throw new IllegalArgumentException("phone parent obligatoire.");
         }
         String normalized = normalizePhone(parentDto.phone());
+        GuineaContactValidation.requireValidGuineaPhone(normalized, "Téléphone parent");
+        validateOptionalEmail(parentDto.email(), "Email parent");
         return parentService.findByPhone(normalized)
             .orElseGet(() -> {
                 Parent p = new Parent();
@@ -153,7 +164,20 @@ public class StudentRegistrationService {
     }
 
     private static String normalizePhone(String phone) {
-        return String.valueOf(phone).trim().replaceAll("\\s+", "");
+        return GuineaContactValidation.compactPhone(phone);
+    }
+
+    private static String normalizePhoneOrNull(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return null;
+        }
+        String compact = GuineaContactValidation.compactPhone(phone);
+        GuineaContactValidation.requireValidGuineaPhone(compact, "Téléphone");
+        return compact;
+    }
+
+    private static void validateOptionalEmail(String email, String fieldLabel) {
+        GuineaContactValidation.requireValidEmail(email, fieldLabel);
     }
 
     private static String nonBlank(String value, String message) {
