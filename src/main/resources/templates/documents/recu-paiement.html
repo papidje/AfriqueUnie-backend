@@ -114,10 +114,18 @@
         .total-words .tw-text { font-size: 10.5pt; font-weight: bold; }
         .total-row { margin-top: 6px; font-size: 11.5pt; }
         .total-row .total-num { font-weight: bold; }
+        .balance-row {
+            margin-top: 10px;
+            font-size: 11.5pt;
+            padding: 8px 12px;
+            border: 1px solid #9ca3af;
+            background: #f9fafb;
+        }
+        .balance-row .balance-num { font-weight: bold; }
         .mode-row { margin-top: 8px; }
         .footer-table { width: 100%; border-collapse: collapse; margin-top: 36px; }
-        .footer-table td { width: 50%; vertical-align: top; padding: 0 8px; }
-        .sig-box { text-align: center; }
+        .footer-table td { vertical-align: top; text-align: center; }
+        .sig-box { text-align: center; display: inline-block; min-width: 220px; }
         .sig-title { font-weight: bold; margin-bottom: 32px; font-size: 10.5pt; }
         .sig-line {
             border-top: 1px solid #6b7280;
@@ -198,6 +206,10 @@
             <span>Montant total : </span>
             <span class="total-num" th:text="${totalAmount}">0 GNF</span>
         </div>
+        <div class="balance-row">
+            <span>Solde dû après ce paiement : </span>
+            <span class="balance-num" th:text="${balanceRemaining}">0 GNF</span>
+        </div>
         <div class="mode-row">
             <strong>Mode de paiement :</strong> <span th:text="${paymentMode}">Espèces</span>
         </div>
@@ -209,14 +221,8 @@
             <tr>
                 <td>
                     <div class="sig-box">
-                        <div class="sig-title">Le comptable</div>
+                        <div class="sig-title">Comptabilité</div>
                         <div class="sig-line">Signature</div>
-                    </div>
-                </td>
-                <td>
-                    <div class="sig-box">
-                        <div class="sig-title">L’établissement</div>
-                        <div class="sig-line">Signature / Tampon</div>
                     </div>
                 </td>
             </tr>

@@ -90,10 +90,11 @@ public class FinanceController {
     @GetMapping(value = "/receipt/{studentId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> getReceiptPdf(
         @PathVariable Long studentId,
-        @RequestParam("reference") String reference
+        @RequestParam("reference") String reference,
+        @RequestParam(value = "duplicate", defaultValue = "false") boolean duplicate
     ) {
         try {
-            byte[] pdf = paymentReceiptPdfService.buildReceiptPdf(studentId, reference);
+            byte[] pdf = paymentReceiptPdfService.buildReceiptPdf(studentId, reference, duplicate);
             String safeRef = (reference == null || reference.isBlank()) ? "recu" : reference.trim().replaceAll("[^A-Za-z0-9._-]", "_");
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)

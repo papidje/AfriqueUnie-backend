@@ -5,6 +5,7 @@ import friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.Parent;
 import friasoft.gn.schoolapp.repository.IParentRepository;
+import friasoft.gn.schoolapp.util.GuineaContactValidation;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ public class ParentService {
     public Parent save(Parent parent) {
         Long tenantId = requireTenantId();
         parent.setTenantId(tenantId);
+        GuineaContactValidation.requireValidEmail(parent.getEmail(), "Email");
         parent.setPhone(normalizePhone(parent.getPhone()));
         return parentRepository.save(parent);
     }
@@ -67,6 +69,7 @@ public class ParentService {
             .ifPresent(other -> {
                 throw new IllegalArgumentException("Ce numéro est déjà utilisé par un autre parent.");
             });
+        GuineaContactValidation.requireValidEmail(body.email(), "Email");
         parent.setLastName(lastName);
         parent.setFirstName(firstName);
         parent.setPhone(normalized);
@@ -95,7 +98,9 @@ public class ParentService {
         if (phone == null || phone.isBlank()) {
             throw new IllegalArgumentException("Le numéro de téléphone est obligatoire.");
         }
-        return phone.trim().replaceAll("\\s+", "");
+        String compact = GuineaContactValidation.compactPhone(phone);
+        GuineaContactValidation.requireValidGuineaPhone(compact, "Téléphone");
+        return compact;
     }
 
     private static Long requireTenantId() {

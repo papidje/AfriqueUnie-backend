@@ -33,6 +33,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.EnumMap;
 import java.util.Set;
 import java.util.UUID;
@@ -462,6 +463,11 @@ public class FinanceService {
 
     @Transactional(readOnly = true)
     public PaymentReceiptView getReceiptDuplicate(Long studentId, String reference) {
+        return getReceipt(studentId, reference, true);
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentReceiptView getReceipt(Long studentId, String reference, boolean duplicate) {
         if (studentId == null || reference == null || reference.isBlank()) {
             throw new IllegalArgumentException("studentId et reference obligatoires.");
         }
@@ -494,6 +500,13 @@ public class FinanceService {
             .map(Payment::getPaymentDate)
             .max(LocalDateTime::compareTo)
             .orElse(first.getPaymentDate());
+        long maxPaymentId = list.stream()
+            .map(Payment::getId)
+            .filter(Objects::nonNull)
+            .mapToLong(Long::longValue)
+            .max()
+            .orElse(0L);
+        double balanceRemaining = computeBalanceRemainingAfterReceipt(studentId, when, maxPaymentId);
         String mode = first.getPaymentMode() != null ? first.getPaymentMode().name() : "ESPECES";
         String cur = first.getCurrency() != null ? first.getCurrency() : "GNF";
         return new PaymentReceiptView(
@@ -507,8 +520,47 @@ public class FinanceService {
             when,
             lines,
             total,
-            true
+            balanceRemaining,
+            duplicate
         );
+    }
+
+    /** Reliquat ouvert après cet encaissement (reconstitué si des paiements ultérieurs existent). */
+    private double computeBalanceRemainingAfterReceipt(
+        Long studentId,
+        LocalDateTime receiptWhen,
+        long maxReceiptPaymentId
+    ) {
+        double currentOpen = computeOpenBalanceTotal(getStudentPaymentInfo(studentId));
+        Student student = studentRepository.findById(studentId)
+            .orElseThrow(() -> new IllegalArgumentException("Élève introuvable."));
+        Long yearId = student.getSchoolClass().getYear().getId();
+        StudentAccount account = studentAccountRepository.findByStudent_IdAndSchoolYear_Id(studentId, yearId)
+            .orElseThrow(() -> new IllegalArgumentException("Compte élève introuvable."));
+        List<Payment> all = paymentRepository.findByStudentAccount_IdIn(List.of(account.getId()));
+        double laterCollected = all.stream()
+            .filter(p -> isPaymentStrictlyAfterReceipt(p, receiptWhen, maxReceiptPaymentId))
+            .mapToDouble(p -> nvl(p.getAmount()))
+            .sum();
+        return Math.max(0d, currentOpen + laterCollected);
+    }
+
+    private static boolean isPaymentStrictlyAfterReceipt(Payment payment, LocalDateTime receiptWhen, long maxReceiptPaymentId) {
+        if (payment == null || receiptWhen == null) {
+            return false;
+        }
+        LocalDateTime when = payment.getPaymentDate();
+        if (when == null) {
+            return false;
+        }
+        if (when.isAfter(receiptWhen)) {
+            return true;
+        }
+        if (when.isBefore(receiptWhen)) {
+            return false;
+        }
+        Long id = payment.getId();
+        return id != null && id > maxReceiptPaymentId;
     }
 
     private static String newReceiptReference() {
