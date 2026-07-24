@@ -50,7 +50,8 @@ app:
   # CSV de motifs (Spring CORS). Surcharge env : CORS_ALLOWED_ORIGIN_PATTERNS
   cors:
     # Liste CSV. Ex. prod: CORS_ALLOWED_ORIGIN_PATTERNS=https://app.example.com,https://123.45.67.89
-    allowed-origin-patterns: "${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,https://*:*}"
+    # NB : un motif avec port (ex. "https://*:*") ne matche PAS une origine sans port comme "https://karanso.com".
+    allowed-origin-patterns: "${CORS_ALLOWED_ORIGIN_PATTERNS:https://karanso.com,https://www.karanso.com,http://localhost:*,http://127.0.0.1:*}"
 
 # Évite que /actuator/health passe en DEGRADED si MailHog n’est pas démarré en local.
 management:
