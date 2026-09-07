@@ -18,7 +18,7 @@ public interface UserRepository extends JpaRepository<User, Long>{
         SELECT u FROM User u
         LEFT JOIN FETCH u.school
         LEFT JOIN FETCH u.platformRole
-        WHERE u.email = :email
+        WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(:email))
         """)
     Optional<User> findByEmailWithSchoolScopes(@Param("email") String email);
     List<User> findAllBySchoolId(Long schoolId);

@@ -754,8 +754,11 @@ public class UserService implements UserDetailsService{
 
     @Override
     public User loadUserByUsername(String username) throws UsernameNotFoundException {
+        if (username == null || username.isBlank()) {
+            throw new UsernameNotFoundException("Pas d'utilisateur pour cet identifiant");
+        }
         return this.userRepository
-            .findByEmailWithSchoolScopes(username)
+            .findByEmailWithSchoolScopes(username.trim())
             .orElseThrow(() -> new UsernameNotFoundException("Pas d'utilisateur pour cet identifiant"));
     }
 
