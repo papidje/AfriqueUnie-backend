@@ -36,8 +36,10 @@ public class AuthenticationController {
     private JwtService jwtService;
 
     @PostMapping(path = "activate")
-    public void activate(@RequestBody ActivationRequest activation) {
+    public Map<String, String> activate(@RequestBody ActivationRequest activation) {
         this.userService.activate(activation);
+        // Session immédiate après activation (même paire JWT que le login).
+        return this.jwtService.generate(activation.email(), true);
     }
 
     @PostMapping(path = "reset-password")
