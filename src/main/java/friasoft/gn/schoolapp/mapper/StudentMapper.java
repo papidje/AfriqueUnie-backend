@@ -22,6 +22,9 @@ public class StudentMapper {
             studentResponse.setCivility(student.getCivility().name());
         }
         studentResponse.setMatricule(student.getMatricule());
+        if (student.getEnrollmentStatus() != null) {
+            studentResponse.setEnrollmentStatus(student.getEnrollmentStatus().name());
+        }
         return studentResponse;
     }
 
@@ -49,6 +52,12 @@ public class StudentMapper {
             .classHistory(student.getClassHistory())
             .schoolClassId(student.getSchoolClass() != null ? student.getSchoolClass().getId() : null)
             .schoolClassName(student.getSchoolClass() != null ? student.getSchoolClass().getName() : null)
+            .schoolId(student.getSchool() != null ? student.getSchool().getId() : (
+                student.getSchoolClass() != null && student.getSchoolClass().getYear() != null
+                    && student.getSchoolClass().getYear().getSchool() != null
+                    ? student.getSchoolClass().getYear().getSchool().getId()
+                    : null
+            ))
             .schoolYearLabel(
                 student.getSchoolClass() != null && student.getSchoolClass().getYear() != null
                     ? student.getSchoolClass().getYear().getLabel()

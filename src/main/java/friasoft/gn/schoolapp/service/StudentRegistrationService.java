@@ -73,7 +73,9 @@ public class StudentRegistrationService {
         student.setBloodGroup(trimToNull(studentDto.bloodGroup()));
         student.setAllergies(trimToNull(studentDto.allergies()));
         student.setSchoolClass(loaded.schoolClass());
+        student.setSchool(loaded.schoolClass().getYear().getSchool());
         student.setTenantId(tenantId);
+        student.setEnrollmentStatus(Student.EnrollmentStatus.INSCRIT);
 
         Student savedStudent = studentService.save(student);
 

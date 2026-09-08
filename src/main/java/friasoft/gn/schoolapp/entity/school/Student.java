@@ -62,6 +62,10 @@ public class Student implements TenantAware {
     private String matricule;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "school_id")
+    private School school;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "school_class_id")
     private SchoolClass schoolClass;
 
@@ -128,6 +132,10 @@ public class Student implements TenantAware {
 
     public enum EnrollmentStatus {
         INSCRIT,
+        /** Élève détaché d’une classe (ex. scission) en attente de réaffectation — reste dans l’école. */
+        SANS_CLASSE,
+        /** Élève ayant quitté l’établissement (désinscrit). */
+        DESINSCRIT,
         TRANSFERE
     }
 

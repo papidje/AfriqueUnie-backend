@@ -3,11 +3,15 @@ package friasoft.gn.schoolapp.service;
 import friasoft.gn.schoolapp.dto.request.StudentPatchRequest;
 import friasoft.gn.schoolapp.dto.request.StudentProfileUpdateRequest;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.entity.school.SchoolClass;
 import friasoft.gn.schoolapp.entity.school.Student;
+import friasoft.gn.schoolapp.repository.IGradeRepository;
+import friasoft.gn.schoolapp.repository.IPaymentRepository;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
 import friasoft.gn.schoolapp.security.SecurityAuthorityUtils;
+import friasoft.gn.schoolapp.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -25,9 +30,12 @@ public class StudentService implements IStudentService {
 
     private final IStudentRepository repository;
     private final ISchoolClassRepository schoolClassRepository;
+    private final IPaymentRepository paymentRepository;
+    private final IGradeRepository gradeRepository;
     private final SchoolService schoolService;
     private final UserRepository userRepository;
     private final TeacherTimetableAccessService teacherTimetableAccessService;
+    private final FileStorageService fileStorageService;
 
     private static User currentUser() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
@@ -52,8 +60,22 @@ public class StudentService implements IStudentService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
-        repository.deleteById(id);
+        Student student = loadStudentForUpdate(id);
+        if (paymentRepository.existsByStudentAccount_Student_Id(id)) {
+            throw new IllegalStateException(
+                "Suppression impossible : des paiements existent pour cet élève. Utilisez la désinscription."
+            );
+        }
+        if (gradeRepository.existsByStudent_Id(id)) {
+            throw new IllegalStateException(
+                "Suppression impossible : des notes existent pour cet élève. Utilisez la désinscription."
+            );
+        }
+        String photoPath = student.getPhotoPath();
+        repository.delete(student);
+        fileStorageService.deleteStudentPhotoIfPresent(photoPath);
     }
 
     @Override
@@ -134,6 +156,75 @@ public class StudentService implements IStudentService {
 
     @Override
     @Transactional
+    public Student transferToClass(Long studentId, Long targetClassId) {
+        if (targetClassId == null) {
+            throw new IllegalArgumentException("classId obligatoire.");
+        }
+        Student student = loadStudentForUpdate(studentId);
+        if (student.getEnrollmentStatus() == Student.EnrollmentStatus.DESINSCRIT) {
+            // Réinscription via affectation à une classe
+        }
+        SchoolClass target = schoolClassRepository.findByIdWithYearAndSchool(targetClassId)
+            .orElseThrow(() -> new IllegalArgumentException("Classe introuvable."));
+        schoolService.assertCurrentUserCanAccessSchool(target.getYear().getSchool().getId());
+
+        Long studentSchoolId = resolveSchoolId(student);
+        Long targetSchoolId = target.getYear().getSchool().getId();
+        if (studentSchoolId != null && !studentSchoolId.equals(targetSchoolId)) {
+            throw new IllegalArgumentException("La classe cible n'appartient pas au même établissement.");
+        }
+
+        String fromLabel = student.getSchoolClass() != null ? student.getSchoolClass().getName() : "sans classe";
+        String toLabel = target.getName();
+        student.setSchoolClass(target);
+        student.setSchool(target.getYear().getSchool());
+        student.setEnrollmentStatus(Student.EnrollmentStatus.INSCRIT);
+        appendClassHistory(student, "Transfert " + fromLabel + " → " + toLabel + " (" + LocalDate.now() + ")");
+        return repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public Student unassignFromClass(Long studentId) {
+        Student student = loadStudentForUpdate(studentId);
+        if (student.getSchoolClass() == null) {
+            throw new IllegalArgumentException("L'élève n'est déjà rattaché à aucune classe.");
+        }
+        if (student.getEnrollmentStatus() == Student.EnrollmentStatus.DESINSCRIT) {
+            throw new IllegalArgumentException("Élève désinscrit : réaffectez-le via un transfert vers une classe.");
+        }
+        ensureSchoolAnchored(student);
+        String fromLabel = student.getSchoolClass().getName();
+        student.setSchoolClass(null);
+        student.setEnrollmentStatus(Student.EnrollmentStatus.SANS_CLASSE);
+        appendClassHistory(student, "Désaffectation de " + fromLabel + " (" + LocalDate.now() + ")");
+        return repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public Student unenroll(Long studentId) {
+        Student student = loadStudentForUpdate(studentId);
+        ensureSchoolAnchored(student);
+        String fromLabel = student.getSchoolClass() != null ? student.getSchoolClass().getName() : "sans classe";
+        student.setSchoolClass(null);
+        student.setEnrollmentStatus(Student.EnrollmentStatus.DESINSCRIT);
+        appendClassHistory(student, "Désinscription (départ) depuis " + fromLabel + " (" + LocalDate.now() + ")");
+        return repository.save(student);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Student> findUnassignedBySchool(Long schoolId) {
+        if (schoolId == null) {
+            throw new IllegalArgumentException("schoolId obligatoire.");
+        }
+        schoolService.assertCurrentUserCanAccessSchool(schoolId);
+        return repository.findUnassignedBySchoolId(schoolId);
+    }
+
+    @Override
+    @Transactional
     public Student updatePhotoPath(Long id, String photoPath) {
         Student student = loadStudentForUpdate(id);
         student.setPhotoPath(trimToNull(photoPath));
@@ -165,9 +256,44 @@ public class StudentService implements IStudentService {
     }
 
     private void assertSchoolAccess(Student student) {
+        Long schoolId = resolveSchoolId(student);
+        if (schoolId != null) {
+            schoolService.assertCurrentUserCanAccessSchool(schoolId);
+        }
+    }
+
+    private static Long resolveSchoolId(Student student) {
+        if (student.getSchool() != null && student.getSchool().getId() != null) {
+            return student.getSchool().getId();
+        }
         if (student.getSchoolClass() != null && student.getSchoolClass().getYear() != null
             && student.getSchoolClass().getYear().getSchool() != null) {
-            schoolService.assertCurrentUserCanAccessSchool(student.getSchoolClass().getYear().getSchool().getId());
+            return student.getSchoolClass().getYear().getSchool().getId();
+        }
+        return null;
+    }
+
+    private void ensureSchoolAnchored(Student student) {
+        if (student.getSchool() != null && student.getSchool().getId() != null) {
+            return;
+        }
+        if (student.getSchoolClass() != null
+            && student.getSchoolClass().getYear() != null
+            && student.getSchoolClass().getYear().getSchool() != null) {
+            student.setSchool(student.getSchoolClass().getYear().getSchool());
+            return;
+        }
+        throw new IllegalStateException(
+            "Impossible de déterminer l'établissement de l'élève. Réaffectez-le d'abord à une classe."
+        );
+    }
+
+    private static void appendClassHistory(Student student, String line) {
+        String prev = student.getClassHistory();
+        if (prev == null || prev.isBlank()) {
+            student.setClassHistory(line);
+        } else {
+            student.setClassHistory(prev.trim() + "\n" + line);
         }
     }
 
@@ -211,9 +337,7 @@ public class StudentService implements IStudentService {
         }
         final Long schoolId = sid;
         return all.stream()
-            .filter(st -> st.getSchoolClass() != null && st.getSchoolClass().getYear() != null
-                && st.getSchoolClass().getYear().getSchool() != null
-                && schoolId.equals(st.getSchoolClass().getYear().getSchool().getId()))
+            .filter(st -> schoolId.equals(resolveSchoolId(st)))
             .toList();
     }
 

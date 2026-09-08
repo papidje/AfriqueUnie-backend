@@ -75,6 +75,11 @@ public class FileStorageService {
         }
     }
 
+    /** Supprime le fichier photo élève s’il existe (ex. suppression de fiche). */
+    public void deleteStudentPhotoIfPresent(String photoPath) {
+        deletePreviousPhoto(photoPath);
+    }
+
     public String storeSchoolLogo(Long schoolId, MultipartFile logo) {
         return storeSchoolLogo(schoolId, logo, null);
     }

@@ -38,6 +38,7 @@ public class StudentDetailResponse {
     /** Identifiant de la classe courante (périodes de notation, relevés). */
     private Long schoolClassId;
     private String schoolClassName;
+    private Long schoolId;
     private String schoolYearLabel;
     private ParentResponse father;
     private ParentResponse mother;

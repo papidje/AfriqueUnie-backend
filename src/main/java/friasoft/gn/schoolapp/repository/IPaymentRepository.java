@@ -49,6 +49,8 @@ public interface IPaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findByStudentAccount_IdIn(Collection<Long> studentAccountIds);
 
+    boolean existsByStudentAccount_Student_Id(Long studentId);
+
     @Query("""
         select p from Payment p
         join fetch p.studentAccount a

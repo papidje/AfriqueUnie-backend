@@ -2,6 +2,7 @@ package friasoft.gn.schoolapp.controller;
 
 import friasoft.gn.schoolapp.dto.request.StudentPatchRequest;
 import friasoft.gn.schoolapp.dto.request.StudentProfileUpdateRequest;
+import friasoft.gn.schoolapp.dto.request.StudentTransferRequest;
 import friasoft.gn.schoolapp.dto.response.StudentDetailResponse;
 import friasoft.gn.schoolapp.dto.response.StudentResponse;
 import friasoft.gn.schoolapp.entity.school.Student;
@@ -56,6 +57,57 @@ public class StudentController {
             return service.findByClass(classId).stream().map(mapper::toDto).toList();
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @GetMapping("/school/{schoolId}/unassigned")
+    public List<StudentResponse> getUnassignedBySchool(@PathVariable Long schoolId) {
+        try {
+            return service.findUnassignedBySchool(schoolId).stream().map(mapper::toDto).toList();
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PostMapping("/{id}/transfer")
+    public ResponseEntity<StudentDetailResponse> transfer(
+        @PathVariable Long id,
+        @RequestBody StudentTransferRequest request
+    ) {
+        try {
+            Student updated = service.transferToClass(id, request != null ? request.classId() : null);
+            return ResponseEntity.ok(mapper.toDetailDto(updated));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(
+                e.getMessage() != null && e.getMessage().contains("introuvable")
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST,
+                e.getMessage()
+            );
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PostMapping("/{id}/unassign")
+    public ResponseEntity<StudentDetailResponse> unassign(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(mapper.toDetailDto(service.unassignFromClass(id)));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
+    @PostMapping("/{id}/unenroll")
+    public ResponseEntity<StudentDetailResponse> unenroll(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(mapper.toDetailDto(service.unenroll(id)));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }
     }
 
@@ -151,7 +203,16 @@ public class StudentController {
     @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
+        try {
+            if (service.findById(id).isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            service.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
     }
 }

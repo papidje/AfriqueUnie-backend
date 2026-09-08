@@ -149,6 +149,7 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         select distinct s from Student s
         left join fetch s.father
         left join fetch s.mother
+        left join fetch s.school
         left join fetch s.schoolClass sc
         left join fetch sc.year y
         left join fetch y.school sch
@@ -172,5 +173,17 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
           and trim(s.photoPath) <> ''
         """)
     List<String> findDistinctPhotoPaths();
+
+    @Query("""
+        select s
+        from Student s
+        left join fetch s.schoolClass
+        where s.school.id = :schoolId
+          and s.schoolClass is null
+        order by s.lastName asc, s.firstName asc
+        """)
+    List<Student> findUnassignedBySchoolId(@Param("schoolId") Long schoolId);
+
+    boolean existsBySchoolClass_Id(Long schoolClassId);
 
 }

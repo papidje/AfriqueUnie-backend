@@ -16,6 +16,8 @@ public interface IGradeRepository extends JpaRepository<Grade, Long> {
 
     Optional<Grade> findByEvaluation_IdAndStudent_Id(Long evaluationId, Long studentId);
 
+    boolean existsByStudent_Id(Long studentId);
+
     @Query("""
         select g from Grade g
         join fetch g.evaluation e

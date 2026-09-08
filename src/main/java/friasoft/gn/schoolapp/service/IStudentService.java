@@ -14,12 +14,17 @@ public interface IStudentService {
     Optional<Student> findById(Long id);
     List<Student> searchByLastName(String lastName);
     List<Student> findByClass(Long classId);
+    List<Student> findUnassignedBySchool(Long schoolId);
     Student save(Student student);
     void delete(Long id);
 
     Student updateProfile(Long id, StudentProfileUpdateRequest request);
     Student patchStudent(Long id, StudentPatchRequest request);
     Student updatePhotoPath(Long id, String photoPath);
+
+    Student transferToClass(Long studentId, Long targetClassId);
+    Student unassignFromClass(Long studentId);
+    Student unenroll(Long studentId);
 
     void unlinkFather(Long studentId);
 

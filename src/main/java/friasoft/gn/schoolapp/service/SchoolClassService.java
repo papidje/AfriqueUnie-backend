@@ -190,4 +190,23 @@ public class SchoolClassService {
             subjectCount
         );
     }
+
+    /**
+     * Suppression d’une classe uniquement si aucun élève n’y est rattaché.
+     * Les matières, EDT, périodes et notes de la classe sont effacés en cascade.
+     */
+    @Transactional
+    public void deleteIfEmpty(Long classId) {
+        SchoolClass sc = repository.findByIdWithYearAndSchool(classId)
+            .orElseThrow(() -> new IllegalArgumentException("Classe introuvable."));
+        schoolService.assertCurrentUserCanAccessSchool(sc.getYear().getSchool().getId());
+        if (studentRepository.existsBySchoolClass_Id(classId)
+            || studentRepository.countBySchoolClass_Id(classId) > 0) {
+            throw new IllegalStateException(
+                "Impossible de supprimer une classe qui contient encore des élèves. "
+                    + "Transférez ou désaffectez les élèves d’abord."
+            );
+        }
+        repository.delete(sc);
+    }
 }
