@@ -45,6 +45,9 @@ spring:
 
 # Dossier persistant (Docker : /app/uploads). Sous-dossiers : photos/, logos/
 app:
+  # URL publique de la SPA (liens dans les e-mails utilisateurs). Ex. prod : https://karanso.com
+  frontend:
+    base-url: ${APP_FRONTEND_BASE_URL:https://karanso.com}
   upload:
     dir: ${APP_UPLOAD_DIR:./uploads}
   # CSV de motifs (Spring CORS). Surcharge env : CORS_ALLOWED_ORIGIN_PATTERNS

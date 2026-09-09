@@ -16,6 +16,7 @@ import friasoft.gn.schoolapp.repository.IActivationRepository;
 import friasoft.gn.schoolapp.repository.UserPlatformRoleRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
 import friasoft.gn.schoolapp.repository.UserSchoolAffiliationRepository;
+import friasoft.gn.schoolapp.config.AppFrontendLinks;
 import friasoft.gn.schoolapp.service.communication.CommunicationMailDispatchService;
 import friasoft.gn.schoolapp.tenancy.TenantContext;
 import friasoft.gn.schoolapp.tenancy.TenantHibernateFilterAspect;
@@ -54,6 +55,7 @@ public class UserService implements UserDetailsService{
     private final NotificationService notificationService;
     private final InAppNotificationService inAppNotificationService;
     private final CommunicationMailDispatchService communicationMailDispatchService;
+    private final AppFrontendLinks frontendLinks;
     private final SchoolService schoolService;
     private final UserSchoolAffiliationRepository userSchoolAffiliationRepository;
     private final UserPlatformRoleRepository userPlatformRoleRepository;
@@ -1170,21 +1172,23 @@ public class UserService implements UserDetailsService{
         String content =
             "Votre accès à l'établissement « "
                 + schoolName
-                + " » a été suspendu par l'administration. Vous ne pouvez plus utiliser ce contexte dans SchoolApp tant que la suspension n'est pas levée.";
+                + " » a été suspendu par l'administration. Vous ne pouvez plus utiliser ce contexte dans Karanso tant que la suspension n'est pas levée.";
         this.inAppNotificationService.createUserTargetedNotification(target, school, title, content);
 
-        String subject = "[SchoolApp] Notification de suspension d'accès - " + schoolName;
+        String loginUrl = frontendLinks.login();
+        String subject = "[Karanso] Notification de suspension d'accès - " + schoolName;
         String htmlBody =
             """
             <html><body style="font-family:sans-serif;font-size:14px;line-height:1.5;color:#222;">
             <p>Bonjour,</p>
             <p>Votre accès à l'établissement <strong>%s</strong> a été <strong>suspendu</strong> par l'administration.</p>
-            <p>Vous ne pouvez plus interagir avec cet établissement dans SchoolApp pour le moment.</p>
+            <p>Vous ne pouvez plus interagir avec cet établissement dans Karanso pour le moment.</p>
             <p>Pour toute question, contactez l'administration de votre organisation.</p>
-            <p>Cordialement,<br/>L'équipe SchoolApp</p>
+            <p>Se connecter (autres établissements éventuels) :<br/>%s</p>
+            <p>Cordialement,<br/>L'équipe Karanso</p>
             </body></html>
             """
-                .formatted(HtmlUtils.htmlEscape(schoolName));
+                .formatted(HtmlUtils.htmlEscape(schoolName), AppFrontendLinks.htmlAnchor(loginUrl, loginUrl));
         sendHtmlMailBestEffort(target, subject, htmlBody);
     }
 
@@ -1233,20 +1237,22 @@ public class UserService implements UserDetailsService{
         String content =
             "Votre accès à l'établissement « "
                 + schoolName
-                + " » a été rétabli. Vous pouvez à nouveau sélectionner cet établissement dans la barre supérieure de SchoolApp.";
+                + " » a été rétabli. Vous pouvez à nouveau sélectionner cet établissement dans la barre supérieure de Karanso.";
         this.inAppNotificationService.createUserTargetedNotification(target, school, title, content);
 
-        String subject = "[SchoolApp] Votre accès a été rétabli ! - " + schoolName;
+        String loginUrl = frontendLinks.login();
+        String subject = "[Karanso] Votre accès a été rétabli ! - " + schoolName;
         String htmlBody =
             """
             <html><body style="font-family:sans-serif;font-size:14px;line-height:1.5;color:#222;">
             <p>Bonjour,</p>
             <p>Bonne nouvelle : votre accès à l'établissement <strong>%s</strong> a été <strong>rétabli</strong>.</p>
-            <p>Vous pouvez de nouveau sélectionner cet établissement dans la <strong>barre supérieure</strong> de SchoolApp pour travailler dans ce contexte.</p>
-            <p>Cordialement,<br/>L'équipe SchoolApp</p>
+            <p>Vous pouvez de nouveau sélectionner cet établissement dans la <strong>barre supérieure</strong> de Karanso pour travailler dans ce contexte.</p>
+            <p>Se connecter :<br/>%s</p>
+            <p>Cordialement,<br/>L'équipe Karanso</p>
             </body></html>
             """
-                .formatted(HtmlUtils.htmlEscape(schoolName));
+                .formatted(HtmlUtils.htmlEscape(schoolName), AppFrontendLinks.htmlAnchor(loginUrl, loginUrl));
         sendHtmlMailBestEffort(target, subject, htmlBody);
     }
 
@@ -1289,24 +1295,26 @@ public class UserService implements UserDetailsService{
         String esc = HtmlUtils.htmlEscape(schoolNamesCsv);
         String intro =
             plural
-                ? ("Les établissements suivants souhaitent vous ajouter à leur équipe sur SchoolApp : <strong>"
+                ? ("Les établissements suivants souhaitent vous ajouter à leur équipe sur Karanso : <strong>"
                     + esc
                     + "</strong>.")
-                : ("L'établissement <strong>" + esc + "</strong> souhaite vous ajouter à son équipe sur SchoolApp.");
+                : ("L'établissement <strong>" + esc + "</strong> souhaite vous ajouter à son équipe sur Karanso.");
+        String notificationsUrl = frontendLinks.notifications();
         String htmlBody =
             """
             <html><body style="font-family:sans-serif;font-size:14px;line-height:1.5;color:#222;">
             <p>Bonjour,</p>
             <p>%s</p>
             <p>Vos informations personnelles restent protégées. Veuillez vous connecter à votre compte et vous rendre dans votre <strong>Centre de Notifications</strong> pour accepter ou décliner cette invitation.</p>
-            <p>Cordialement,<br/>L'équipe SchoolApp</p>
+            <p>Ouvrir le centre de notifications :<br/>%s</p>
+            <p>Cordialement,<br/>L'équipe Karanso</p>
             </body></html>
             """
-                .formatted(intro);
+                .formatted(intro, AppFrontendLinks.htmlAnchor(notificationsUrl, notificationsUrl));
         String subject =
             plural
-                ? "[SchoolApp] Invitation à rejoindre des établissements sur SchoolApp"
-                : "[SchoolApp] Invitation à rejoindre l'établissement " + schoolNamesCsv;
+                ? "[Karanso] Invitation à rejoindre des établissements sur Karanso"
+                : "[Karanso] Invitation à rejoindre l'établissement " + schoolNamesCsv;
         sendHtmlMailBestEffort(target, subject, htmlBody);
     }
 
