@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.controller;
 
+import friasoft.gn.schoolapp.dto.FamilyPreviewDtos;
 import friasoft.gn.schoolapp.dto.RegistrationDTO;
 import friasoft.gn.schoolapp.dto.response.StudentResponse;
 import friasoft.gn.schoolapp.mapper.StudentMapper;
@@ -18,6 +19,19 @@ public class StudentRegistrationController {
 
     private final StudentRegistrationService registrationService;
     private final StudentMapper studentMapper;
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @GetMapping("/family-preview")
+    public FamilyPreviewDtos.FamilyPreviewResponse familyPreview(
+        @RequestParam String fatherPhone,
+        @RequestParam String motherPhone
+    ) {
+        try {
+            return registrationService.previewFamily(fatherPhone, motherPhone);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
 
     @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @PostMapping

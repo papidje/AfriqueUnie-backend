@@ -17,10 +17,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import friasoft.gn.schoolapp.dto.TuitionPercentDtos;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -58,6 +60,20 @@ public class FinanceController {
     public StudentPaymentInfoDTO getPaymentInfo(@PathVariable Long studentId) {
         try {
             return financeService.getStudentPaymentInfo(studentId);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PutMapping("/payment-info/{studentId}/tuition-payable-percent")
+    public TuitionPercentDtos.TuitionPayablePercentResponse updateTuitionPayablePercent(
+        @PathVariable Long studentId,
+        @RequestBody TuitionPercentDtos.UpdateTuitionPayablePercentRequest body
+    ) {
+        try {
+            Double percent = body == null ? null : body.tuitionPayablePercent();
+            return financeService.updateTuitionPayablePercent(studentId, percent);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }

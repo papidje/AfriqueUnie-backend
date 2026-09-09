@@ -186,4 +186,31 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
 
     boolean existsBySchoolClass_Id(Long schoolClassId);
 
+    @Query("""
+        select distinct s from Student s
+        left join fetch s.schoolClass sc
+        where s.father.id = :fatherId
+        order by s.lastName asc, s.firstName asc, s.id asc
+        """)
+    List<Student> findAllByFatherIdWithClass(@Param("fatherId") Long fatherId);
+
+    @Query("""
+        select distinct s from Student s
+        left join fetch s.schoolClass sc
+        where s.mother.id = :motherId
+        order by s.lastName asc, s.firstName asc, s.id asc
+        """)
+    List<Student> findAllByMotherIdWithClass(@Param("motherId") Long motherId);
+
+    @Query("""
+        select distinct s from Student s
+        left join fetch s.schoolClass sc
+        where s.father.id = :fatherId
+          and s.mother.id = :motherId
+        order by s.lastName asc, s.firstName asc, s.id asc
+        """)
+    List<Student> findAllByFatherIdAndMotherIdWithClass(
+        @Param("fatherId") Long fatherId,
+        @Param("motherId") Long motherId
+    );
 }

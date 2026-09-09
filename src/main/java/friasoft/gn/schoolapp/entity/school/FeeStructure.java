@@ -50,6 +50,14 @@ public class FeeStructure implements TenantAware {
     @Column(name = "monthly_tuition_fee", nullable = false)
     private Double monthlyTuitionFee = 0d;
 
+    /**
+     * Si non null : scolarité saisie en annuel (toggle Annuelle).
+     * Les dus mensuels sont alors dérivés ({@code TuitionMonthDues}).
+     * Si null : mode mensuel ({@link #monthlyTuitionFee}).
+     */
+    @Column(name = "annual_tuition_fee")
+    private Double annualTuitionFee;
+
     @Column(name = "supplies_fee", nullable = false)
     private Double suppliesFee = 0d;
 

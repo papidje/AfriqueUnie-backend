@@ -3,12 +3,17 @@ package friasoft.gn.schoolapp.dto;
 public final class FeeStructureDtos {
     private FeeStructureDtos() {}
 
+    /**
+     * Mode mensuel : {@code annualTuitionFee == null}, montant dans {@code monthlyTuitionFee}.
+     * Mode annuel : {@code annualTuitionFee != null}, {@code monthlyTuitionFee} ignoré (forcé à 0).
+     */
     public record FeeStructureRequest(
         Long classLevelId,
         Long schoolYearId,
         Double registrationFee,
         Double reRegistrationFee,
         Double monthlyTuitionFee,
+        Double annualTuitionFee,
         Double suppliesFee,
         Boolean suppliesColumnEnabled,
         String currency
@@ -25,8 +30,14 @@ public final class FeeStructureDtos {
         Double registrationFee,
         Double reRegistrationFee,
         Double monthlyTuitionFee,
+        Double annualTuitionFee,
         Double suppliesFee,
         Boolean suppliesColumnEnabled,
-        String currency
+        String currency,
+        /**
+         * true si au moins un encaissement existe pour ce niveau / année
+         * (barème non modifiable ni supprimable).
+         */
+        boolean locked
     ) {}
 }

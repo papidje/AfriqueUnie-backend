@@ -47,6 +47,14 @@ public class StudentAccount implements TenantAware {
     @Column(name = "supplies_paid", nullable = false)
     private Boolean suppliesPaid = false;
 
+    /**
+     * Part de scolarité due (0 = exempté, 100 = montant barème complet).
+     * Ne s’applique pas à l’inscription / réinscription / fournitures.
+     * Non modifiable dès qu’un paiement {@code SCOLARITE} existe pour ce compte.
+     */
+    @Column(name = "tuition_payable_percent", nullable = false)
+    private Double tuitionPayablePercent = 100d;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

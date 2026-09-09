@@ -16,7 +16,13 @@ public record StudentPaymentInfoDTO(
     /** Montant attendu (0 si la colonne fournitures est désactivée dans la structure de frais). */
     Double suppliesExpected,
     boolean suppliesColumnEnabled,
-    List<MonthlyTuitionStatusDTO> monthlyTuition
+    List<MonthlyTuitionStatusDTO> monthlyTuition,
+    /** 0 = exempté, 100 = scolarité barème complète. */
+    Double tuitionPayablePercent,
+    /** true dès qu’un paiement SCOLARITE existe pour le compte de l’année. */
+    boolean tuitionPercentLocked,
+    /** Total scolarité barème avant application du %. */
+    Double tuitionCatalogExpected
 ) {
     public record MonthlyTuitionStatusDTO(
         String monthCode,
@@ -26,4 +32,3 @@ public record StudentPaymentInfoDTO(
         String status
     ) {}
 }
-

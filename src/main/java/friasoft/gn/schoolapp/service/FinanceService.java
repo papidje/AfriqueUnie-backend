@@ -7,6 +7,7 @@ import friasoft.gn.schoolapp.dto.FinancePaymentDtos.CreatePaymentRequest;
 import friasoft.gn.schoolapp.dto.FinancePaymentDtos.CreatePaymentResponse;
 import friasoft.gn.schoolapp.dto.FinancePaymentDtos.PaymentReceiptView;
 import friasoft.gn.schoolapp.dto.FinancePaymentDtos.ReceiptLine;
+import friasoft.gn.schoolapp.dto.TuitionPercentDtos;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.FeeStructure;
 import friasoft.gn.schoolapp.entity.school.Payment;
@@ -19,6 +20,7 @@ import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.IStudentAccountRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
+import friasoft.gn.schoolapp.service.finance.TuitionMonthDues;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -202,11 +204,7 @@ public class FinanceService {
             .findByClassLevel_IdAndSchoolYear_Id(schoolClass.getLevel().getId(), schoolClass.getYear().getId())
             .orElseThrow(() -> new IllegalArgumentException("Aucune structure de frais trouvée pour ce niveau et cette année."));
 
-        double registrationFee = nvl(feeStructure.getRegistrationFee());
-        double monthlyFee = nvl(feeStructure.getMonthlyTuitionFee());
         double suppliesFee = nvl(feeStructure.getSuppliesFee());
-        double tuitionExpected = monthlyFee * MONTHS_OCT_TO_JUN.size();
-        double totalExpected = registrationFee + tuitionExpected + suppliesFee;
 
         List<Student> students = studentRepository.findBySchoolClass_Id(schoolClass.getId());
         if (students.isEmpty()) {
@@ -224,7 +222,7 @@ public class FinanceService {
             : groupPaymentSumsByAccount(paymentRepository.findByStudentAccount_IdIn(accountIds));
 
         return students.stream()
-            .map(student -> toStatus(student, accountByStudentId, paidByAccountId, feeStructure, monthlyFee, suppliesFee, tuitionExpected, totalExpected))
+            .map(student -> toStatus(student, accountByStudentId, paidByAccountId, feeStructure, suppliesFee))
             .toList();
     }
 
@@ -265,7 +263,9 @@ public class FinanceService {
             : nvl(feeStructure.getRegistrationFee());
         double insReinsRemaining = Math.max(0d, insReinsExpected - insReinsPaid);
 
-        double monthlyFee = nvl(feeStructure.getMonthlyTuitionFee());
+        double payablePercent = resolveTuitionPayablePercent(account);
+        double tuitionCatalogExpected = TuitionMonthDues.totalExpected(feeStructure, 100d);
+        double[] tuitionDues = TuitionMonthDues.forFeeStructure(feeStructure, payablePercent);
         Map<String, Double> explicitTuitionByMonth = new HashMap<>();
         double orphanTuition = 0d;
         for (Payment p : accountPayments) {
@@ -281,10 +281,13 @@ public class FinanceService {
             }
         }
         List<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO> monthlyStatuses =
-            buildMonthlyTuitionStatuses(monthlyFee, explicitTuitionByMonth, orphanTuition);
+            buildMonthlyTuitionStatuses(tuitionDues, explicitTuitionByMonth, orphanTuition);
 
         boolean suppliesColumnEnabled = Boolean.TRUE.equals(feeStructure.getSuppliesColumnEnabled());
         double suppliesExpected = suppliesColumnEnabled ? nvl(feeStructure.getSuppliesFee()) : 0d;
+        boolean tuitionLocked = paymentRepository.existsByStudentAccount_IdAndPaymentType(
+            account.getId(), Payment.PaymentType.SCOLARITE
+        );
 
         return new StudentPaymentInfoDTO(
             student.getId(),
@@ -298,7 +301,51 @@ public class FinanceService {
             Boolean.TRUE.equals(account.getSuppliesPaid()),
             suppliesExpected,
             suppliesColumnEnabled,
-            monthlyStatuses
+            monthlyStatuses,
+            payablePercent,
+            tuitionLocked,
+            tuitionCatalogExpected
+        );
+    }
+
+    /**
+     * Met à jour le % de scolarité à payer tant qu’aucun paiement SCOLARITE n’existe pour l’année.
+     */
+    @Transactional
+    public TuitionPercentDtos.TuitionPayablePercentResponse updateTuitionPayablePercent(
+        Long studentId,
+        Double percentRaw
+    ) {
+        if (studentId == null) {
+            throw new IllegalArgumentException("studentId obligatoire.");
+        }
+        Student student = studentRepository.findById(studentId)
+            .orElseThrow(() -> new IllegalArgumentException("Élève introuvable."));
+        if (student.getSchoolClass() == null || student.getSchoolClass().getYear() == null) {
+            throw new IllegalArgumentException("Contexte classe/année de l'élève introuvable.");
+        }
+        schoolService.assertCurrentUserCanAccessSchool(student.getSchoolClass().getYear().getSchool().getId());
+
+        StudentAccount account = studentAccountRepository
+            .findByStudent_IdAndSchoolYear_Id(studentId, student.getSchoolClass().getYear().getId())
+            .orElseThrow(() -> new IllegalArgumentException("Compte élève introuvable pour l'année en cours."));
+
+        boolean locked = paymentRepository.existsByStudentAccount_IdAndPaymentType(
+            account.getId(), Payment.PaymentType.SCOLARITE
+        );
+        if (locked) {
+            throw new IllegalArgumentException(
+                "Le pourcentage de scolarité n’est plus modifiable après un premier encaissement de scolarité."
+            );
+        }
+        double percent = TuitionMonthDues.clampPercent(percentRaw == null ? 100d : percentRaw);
+        account.setTuitionPayablePercent(percent);
+        studentAccountRepository.save(account);
+        return new TuitionPercentDtos.TuitionPayablePercentResponse(
+            studentId,
+            account.getId(),
+            percent,
+            false
         );
     }
 
@@ -727,10 +774,7 @@ public class FinanceService {
         Map<Long, StudentAccount> accountByStudentId,
         Map<Long, PaymentSums> paidByAccountId,
         FeeStructure feeStructure,
-        double monthlyFee,
-        double suppliesFee,
-        double tuitionExpected,
-        double totalExpected
+        double suppliesFee
     ) {
         StudentAccount account = accountByStudentId.get(student.getId());
         PaymentSums sums = account == null ? PaymentSums.empty() : paidByAccountId.getOrDefault(account.getId(), PaymentSums.empty());
@@ -744,14 +788,21 @@ public class FinanceService {
             ? nvl(feeStructure.getReRegistrationFee())
             : nvl(feeStructure.getRegistrationFee());
 
+        double payablePercent = resolveTuitionPayablePercent(account);
+        double[] tuitionDues = TuitionMonthDues.forFeeStructure(feeStructure, payablePercent);
+        double tuitionExpected = TuitionMonthDues.sum(tuitionDues);
+        boolean suppliesColumnEnabled = Boolean.TRUE.equals(feeStructure.getSuppliesColumnEnabled());
+        double totalExpected = insReinsExpected
+            + tuitionExpected
+            + (suppliesColumnEnabled ? suppliesFee : 0d);
+
         double totalPaid = sums.total();
         double tuitionPaid = sums.get(Payment.PaymentType.SCOLARITE);
         double paymentPercentage = tuitionExpected <= 0d ? 100d : (tuitionPaid / tuitionExpected) * 100d;
-        boolean suppliesColumnEnabled = Boolean.TRUE.equals(feeStructure.getSuppliesColumnEnabled());
         boolean hasPaidSupplies = Boolean.TRUE.equals(account != null ? account.getSuppliesPaid() : Boolean.FALSE)
             || sums.get(Payment.PaymentType.FOURNITURES) > 0d;
 
-        Map<String, Boolean> monthlyCoverage = buildMonthlyCoverage(tuitionPaid, monthlyFee);
+        Map<String, Boolean> monthlyCoverage = buildMonthlyCoverage(tuitionPaid, tuitionDues);
 
         return new StudentPaymentStatusDTO(
             student.getId(),
@@ -774,6 +825,13 @@ public class FinanceService {
         );
     }
 
+    private static double resolveTuitionPayablePercent(StudentAccount account) {
+        if (account == null || account.getTuitionPayablePercent() == null) {
+            return 100d;
+        }
+        return TuitionMonthDues.clampPercent(account.getTuitionPayablePercent());
+    }
+
     private Map<Long, PaymentSums> groupPaymentSumsByAccount(List<Payment> payments) {
         Map<Long, PaymentSums> byAccount = new LinkedHashMap<>();
         for (Payment p : payments) {
@@ -784,15 +842,27 @@ public class FinanceService {
         return byAccount;
     }
 
-    private Map<String, Boolean> buildMonthlyCoverage(double tuitionPaid, double monthlyFee) {
+    private Map<String, Boolean> buildMonthlyCoverage(double tuitionPaid, double[] tuitionDues) {
         Map<String, Boolean> result = new LinkedHashMap<>();
-        if (monthlyFee <= 0d) {
+        boolean allZero = true;
+        for (double due : tuitionDues) {
+            if (due > 0d) {
+                allZero = false;
+                break;
+            }
+        }
+        if (allZero) {
             MONTHS_OCT_TO_JUN.forEach(m -> result.put(m, true));
             return result;
         }
-        int coveredCount = (int) Math.floor(tuitionPaid / monthlyFee);
+        double rem = Math.max(0d, tuitionPaid);
         for (int i = 0; i < MONTHS_OCT_TO_JUN.size(); i++) {
-            result.put(MONTHS_OCT_TO_JUN.get(i), i < coveredCount);
+            double due = i < tuitionDues.length ? Math.max(0d, tuitionDues[i]) : 0d;
+            boolean covered = due <= 0d || rem + 1e-6 >= due;
+            result.put(MONTHS_OCT_TO_JUN.get(i), covered);
+            if (due > 0d && covered) {
+                rem -= due;
+            }
         }
         return result;
     }
@@ -802,7 +872,7 @@ public class FinanceService {
      * réparti en Oct→Juin (comportement historique pour les anciennes lignes SCOLARITE).
      */
     private List<StudentPaymentInfoDTO.MonthlyTuitionStatusDTO> buildMonthlyTuitionStatuses(
-        double monthlyFee,
+        double[] tuitionDues,
         Map<String, Double> explicitByMonth,
         double orphanTuition
     ) {
@@ -810,7 +880,7 @@ public class FinanceService {
         double orphanRem = Math.max(0d, orphanTuition);
         for (int i = 0; i < MONTHS_OCT_TO_JUN.size(); i++) {
             String code = MONTHS_OCT_TO_JUN.get(i);
-            double due = Math.max(0d, monthlyFee);
+            double due = i < tuitionDues.length ? Math.max(0d, tuitionDues[i]) : 0d;
             double explicit = nvl(explicitByMonth.get(code));
             double needFromOrphan = Math.max(0d, due - explicit);
             double fromOrphan = Math.min(orphanRem, needFromOrphan);

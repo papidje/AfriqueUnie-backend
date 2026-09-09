@@ -51,6 +51,8 @@ public interface IPaymentRepository extends JpaRepository<Payment, Long> {
 
     boolean existsByStudentAccount_Student_Id(Long studentId);
 
+    boolean existsByStudentAccount_IdAndPaymentType(Long studentAccountId, Payment.PaymentType paymentType);
+
     @Query("""
         select p from Payment p
         join fetch p.studentAccount a
@@ -74,6 +76,34 @@ public interface IPaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByStudentIdAndReceiptReference(
         @Param("studentId") Long studentId,
         @Param("reference") String reference
+    );
+
+    /**
+     * Niveaux pour lesquels au moins un encaissement existe (élèves actuellement
+     * dans une classe de ce niveau, compte de l’année donnée).
+     */
+    @Query("""
+        select distinct sc.level.id
+        from Payment p
+        join p.studentAccount a
+        join a.student s
+        join s.schoolClass sc
+        where a.schoolYear.id = :schoolYearId
+        """)
+    List<Long> findClassLevelIdsWithPaymentsForSchoolYear(@Param("schoolYearId") Long schoolYearId);
+
+    @Query("""
+        select case when count(p) > 0 then true else false end
+        from Payment p
+        join p.studentAccount a
+        join a.student s
+        join s.schoolClass sc
+        where a.schoolYear.id = :schoolYearId
+          and sc.level.id = :classLevelId
+        """)
+    boolean existsPaymentForClassLevelAndSchoolYear(
+        @Param("classLevelId") Long classLevelId,
+        @Param("schoolYearId") Long schoolYearId
     );
 }
 

@@ -1,5 +1,8 @@
 package friasoft.gn.schoolapp.service;
 
+import friasoft.gn.schoolapp.dto.FamilyPreviewDtos.FamilyPreviewResponse;
+import friasoft.gn.schoolapp.dto.FamilyPreviewDtos.ParentSummary;
+import friasoft.gn.schoolapp.dto.FamilyPreviewDtos.SiblingStudentRow;
 import friasoft.gn.schoolapp.dto.ParentRegistrationDTO;
 import friasoft.gn.schoolapp.dto.RegistrationDTO;
 import friasoft.gn.schoolapp.dto.StudentRegistrationDTO;
@@ -9,11 +12,17 @@ import friasoft.gn.schoolapp.entity.school.Student;
 import friasoft.gn.schoolapp.entity.school.StudentAccount;
 import friasoft.gn.schoolapp.repository.IStudentAccountRepository;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
+import friasoft.gn.schoolapp.repository.IStudentRepository;
+import friasoft.gn.schoolapp.service.finance.TuitionMonthDues;
 import friasoft.gn.schoolapp.util.GuineaContactValidation;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @AllArgsConstructor
@@ -24,6 +33,7 @@ public class StudentRegistrationService {
     private final ISchoolClassRepository schoolClassRepository;
     private final SchoolService schoolService;
     private final IStudentAccountRepository studentAccountRepository;
+    private final IStudentRepository studentRepository;
     private final FinanceService financeService;
 
     @Transactional
@@ -85,6 +95,7 @@ public class StudentRegistrationService {
         account.setSchoolYear(loaded.schoolClass().getYear());
         account.setCurrency(normalizeCurrency(dto.currency()));
         account.setSuppliesPaid(false);
+        account.setTuitionPayablePercent(normalizeTuitionPayablePercent(dto.tuitionPayablePercent()));
         account = studentAccountRepository.save(account);
 
         if (amountPaid > 0d) {
@@ -97,6 +108,99 @@ public class StudentRegistrationService {
         }
 
         return savedStudent;
+    }
+
+    /**
+     * Aperçu fratrie pour l’étape scolarité (parents déjà connus en annuaire via téléphone).
+     * Listes : commune (père ET mère), enfants du père hors commune, enfants de la mère hors commune.
+     */
+    @Transactional(readOnly = true)
+    public FamilyPreviewResponse previewFamily(String fatherPhoneRaw, String motherPhoneRaw) {
+        String fatherPhone = normalizePhone(nonBlank(fatherPhoneRaw, "Téléphone du père obligatoire."));
+        String motherPhone = normalizePhone(nonBlank(motherPhoneRaw, "Téléphone de la mère obligatoire."));
+        GuineaContactValidation.requireValidGuineaPhone(fatherPhone, "Téléphone du père");
+        GuineaContactValidation.requireValidGuineaPhone(motherPhone, "Téléphone de la mère");
+
+        Optional<Parent> fatherOpt = parentService.findByPhone(fatherPhone);
+        Optional<Parent> motherOpt = parentService.findByPhone(motherPhone);
+
+        ParentSummary fatherSummary = toParentSummary(fatherOpt, fatherPhone);
+        ParentSummary motherSummary = toParentSummary(motherOpt, motherPhone);
+
+        if (fatherOpt.isEmpty() && motherOpt.isEmpty()) {
+            return new FamilyPreviewResponse(fatherSummary, motherSummary, List.of(), List.of(), List.of());
+        }
+
+        List<Student> both = List.of();
+        List<Student> fatherChildren = List.of();
+        List<Student> motherChildren = List.of();
+
+        if (fatherOpt.isPresent() && motherOpt.isPresent()) {
+            both = studentRepository.findAllByFatherIdAndMotherIdWithClass(
+                fatherOpt.get().getId(), motherOpt.get().getId()
+            );
+        }
+        if (fatherOpt.isPresent()) {
+            fatherChildren = studentRepository.findAllByFatherIdWithClass(fatherOpt.get().getId());
+        }
+        if (motherOpt.isPresent()) {
+            motherChildren = studentRepository.findAllByMotherIdWithClass(motherOpt.get().getId());
+        }
+
+        List<SiblingStudentRow> bothRows = both.stream().map(this::toSiblingRow).toList();
+        java.util.Set<Long> bothIds = both.stream().map(Student::getId).collect(java.util.stream.Collectors.toSet());
+
+        List<SiblingStudentRow> fatherOnly = new ArrayList<>();
+        for (Student s : fatherChildren) {
+            if (!bothIds.contains(s.getId())) {
+                fatherOnly.add(toSiblingRow(s));
+            }
+        }
+        List<SiblingStudentRow> motherOnly = new ArrayList<>();
+        for (Student s : motherChildren) {
+            if (!bothIds.contains(s.getId())) {
+                motherOnly.add(toSiblingRow(s));
+            }
+        }
+
+        return new FamilyPreviewResponse(fatherSummary, motherSummary, bothRows, fatherOnly, motherOnly);
+    }
+
+    private ParentSummary toParentSummary(Optional<Parent> opt, String phone) {
+        if (opt.isEmpty()) {
+            return new ParentSummary(null, null, null, phone, null, null, null, false);
+        }
+        Parent p = opt.get();
+        return new ParentSummary(
+            p.getId(),
+            p.getFirstName(),
+            p.getLastName(),
+            p.getPhone(),
+            p.getEmail(),
+            p.getProfession(),
+            p.getAddress(),
+            true
+        );
+    }
+
+    private SiblingStudentRow toSiblingRow(Student s) {
+        String className = s.getSchoolClass() != null ? s.getSchoolClass().getName() : null;
+        String status = s.getEnrollmentStatus() != null ? s.getEnrollmentStatus().name() : null;
+        return new SiblingStudentRow(
+            s.getId(),
+            s.getFirstName(),
+            s.getLastName(),
+            s.getMatricule(),
+            className,
+            status
+        );
+    }
+
+    private static double normalizeTuitionPayablePercent(Double raw) {
+        if (raw == null) {
+            return 100d;
+        }
+        return TuitionMonthDues.clampPercent(raw);
     }
 
     private record SchoolClassInfo(friasoft.gn.schoolapp.entity.school.SchoolClass schoolClass) {}
