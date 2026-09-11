@@ -2,6 +2,7 @@ package friasoft.gn.schoolapp.service;
 
 import friasoft.gn.schoolapp.dto.ClassSubjectDtos.TeacherSummaryResponse;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.entity.school.City;
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
@@ -27,6 +28,7 @@ public class SchoolService {
     private final UserRepository userRepository;
     private final SchoolSecurity schoolSecurity;
     private final UserSchoolAffiliationRepository userSchoolAffiliationRepository;
+    private final CityService cityService;
 
     /**
      * Établissements auxquels l’utilisateur connecté a accès dans l’UI (sélecteur d’école, profil, etc.).
@@ -81,6 +83,7 @@ public class SchoolService {
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
+        school.setCity(resolveRequiredCity(school.getCity()));
         return this.schoolRepository.save(school);
     }
 
@@ -105,6 +108,7 @@ public class SchoolService {
         school.setContact(dto.getContact());
         // Le logo est géré uniquement via l’upload (PATCH /schools/{id}/logo).
         school.setOpenDate(dto.getOpenDate());
+        school.setCity(resolveRequiredCity(dto.getCity()));
         if (dto.getThemeName() != null) {
             school.setThemeName(dto.getThemeName().trim().isEmpty() ? "classique" : dto.getThemeName().trim());
         }
@@ -113,6 +117,17 @@ public class SchoolService {
         }
         school.setUpdated_at(Instant.now());
         return this.schoolRepository.save(school);
+    }
+
+    private City resolveRequiredCity(City cityRef) {
+        if (cityRef == null || cityRef.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La ville est obligatoire.");
+        }
+        try {
+            return cityService.requireActiveCity(cityRef.getId());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @Transactional

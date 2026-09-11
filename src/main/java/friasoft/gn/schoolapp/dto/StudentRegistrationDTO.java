@@ -15,6 +15,8 @@ public record StudentRegistrationDTO(
     String emergencyContactName,
     String emergencyContactPhone,
     String bloodGroup,
-    String allergies
+    String allergies,
+    /** Numéro de la carte scolaire remise à l’inscription. */
+    String cardNumber
 ) {}
 

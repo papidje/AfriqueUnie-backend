@@ -54,9 +54,37 @@ public class StudentService implements IStudentService {
     @Transactional
     public Student save(Student student) {
         if (student.getId() == null) {
-            student.setMatricule(student.buildMatricule());
+            student.setMatricule(generateUniqueMatricule(student));
+            assertCardNumberAvailable(student.getTenantId(), student.getCardNumber(), null);
         }
         return repository.save(student);
+    }
+
+    private String generateUniqueMatricule(Student student) {
+        final int maxAttempts = 32;
+        for (int i = 0; i < maxAttempts; i++) {
+            String candidate = student.buildMatricule();
+            if (!repository.existsByMatricule(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("Impossible de générer un matricule unique. Réessayez.");
+    }
+
+    private void assertCardNumberAvailable(Long tenantId, String cardNumber, Long excludeStudentId) {
+        String normalized = trimToNull(cardNumber);
+        if (normalized == null) {
+            return;
+        }
+        if (tenantId == null) {
+            throw new IllegalArgumentException("tenantId obligatoire pour vérifier le numéro de carte.");
+        }
+        boolean taken = excludeStudentId == null
+            ? repository.existsByTenantIdAndCardNumber(tenantId, normalized)
+            : repository.existsByTenantIdAndCardNumberAndIdNot(tenantId, normalized, excludeStudentId);
+        if (taken) {
+            throw new IllegalArgumentException("Ce numéro de carte est déjà attribué à un autre élève.");
+        }
     }
 
     @Override
@@ -123,6 +151,11 @@ public class StudentService implements IStudentService {
         student.setBirthDate(request.birthDate());
         student.setEmergencyContactName(requireNonBlank(request.emergencyContactName(), "Contact d'urgence (nom) obligatoire."));
         student.setEmergencyContactPhone(requireNonBlank(request.emergencyContactPhone(), "Contact d'urgence (téléphone) obligatoire."));
+        if (request.cardNumber() != null) {
+            String card = trimToNull(request.cardNumber());
+            assertCardNumberAvailable(student.getTenantId(), card, student.getId());
+            student.setCardNumber(card);
+        }
         return repository.save(student);
     }
 
@@ -148,6 +181,11 @@ public class StudentService implements IStudentService {
         if (request.tutorPhone() != null) student.setTutorPhone(trimToNull(request.tutorPhone()));
         if (request.tutorEmail() != null) student.setTutorEmail(trimToNull(request.tutorEmail()));
         if (request.classHistory() != null) student.setClassHistory(trimToNull(request.classHistory()));
+        if (request.cardNumber() != null) {
+            String card = trimToNull(request.cardNumber());
+            assertCardNumberAvailable(student.getTenantId(), card, student.getId());
+            student.setCardNumber(card);
+        }
         if (request.enrollmentStatus() != null && !request.enrollmentStatus().isBlank()) {
             student.setEnrollmentStatus(Student.EnrollmentStatus.valueOf(request.enrollmentStatus().trim().toUpperCase()));
         }

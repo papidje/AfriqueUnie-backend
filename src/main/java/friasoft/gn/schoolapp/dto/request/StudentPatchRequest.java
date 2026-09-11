@@ -21,5 +21,7 @@ public record StudentPatchRequest(
     String tutorPhone,
     String tutorEmail,
     String enrollmentStatus,
-    String classHistory
+    String classHistory,
+    /** Numéro de carte scolaire (null = inchangé ; chaîne vide = effacer). */
+    String cardNumber
 ) {}

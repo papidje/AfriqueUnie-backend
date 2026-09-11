@@ -82,6 +82,7 @@ public class StudentRegistrationService {
         student.setEmergencyContactPhone(normalizePhoneOrNull(studentDto.emergencyContactPhone()));
         student.setBloodGroup(trimToNull(studentDto.bloodGroup()));
         student.setAllergies(trimToNull(studentDto.allergies()));
+        student.setCardNumber(trimToNull(studentDto.cardNumber()));
         student.setSchoolClass(loaded.schoolClass());
         student.setSchool(loaded.schoolClass().getYear().getSchool());
         student.setTenantId(tenantId);

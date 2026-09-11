@@ -26,4 +26,12 @@ public interface ISubjectRepository extends JpaRepository<Subject, Long> {
         "select s from Subject s where lower(s.code) = lower(:code) and (s.school is null or s.school.id = :schoolId)"
     )
     List<Subject> findByCodeInCatalogScope(@Param("code") String code, @Param("schoolId") Long schoolId);
+
+    @Query("select s from Subject s where s.school is null order by s.name asc")
+    List<Subject> findGlobalSubjects();
+
+    @Query(
+        "select s from Subject s where s.school is null and lower(s.code) = lower(:code)"
+    )
+    List<Subject> findGlobalByCode(@Param("code") String code);
 }

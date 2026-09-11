@@ -213,6 +213,9 @@
         <div class="mode-row">
             <strong>Mode de paiement :</strong> <span th:text="${paymentMode}">Espèces</span>
         </div>
+        <p class="mode-row" th:if="${showPaymentReference}">
+            <strong>Référence :</strong> <span th:text="${paymentReference}">—</span>
+        </p>
         <p style="margin-top: 12px; font-size: 9.5pt; color: #4b5563;">
             <strong>Payé par :</strong> <span th:text="${recordedBy}">—</span>
         </p>

@@ -36,7 +36,7 @@ public class ParentController {
     public ResponseEntity<ParentResponse> findByPhone(@RequestParam String phone) {
         try {
             return parentService.findByPhone(phone)
-                .map(this::toResponse)
+                .map(p -> toResponse(p, false))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
         } catch (IllegalArgumentException e) {
@@ -48,7 +48,7 @@ public class ParentController {
     @GetMapping("/{id}")
     public ResponseEntity<ParentResponse> getById(@PathVariable Long id) {
         return parentService.findById(id)
-            .map(this::toResponse)
+            .map(p -> toResponse(p, true))
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }
@@ -58,7 +58,7 @@ public class ParentController {
     public ResponseEntity<ParentResponse> update(@PathVariable Long id, @RequestBody ParentWriteRequest body) {
         try {
             Parent saved = parentService.update(id, body);
-            return ResponseEntity.ok(toResponse(saved));
+            return ResponseEntity.ok(toResponse(saved, true));
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
@@ -76,7 +76,7 @@ public class ParentController {
             parent.setProfession(trimToNull(body.profession()));
             parent.setAddress(trimToNull(body.address()));
             Parent saved = parentService.save(parent);
-            return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved));
+            return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved, false));
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
@@ -84,7 +84,7 @@ public class ParentController {
         }
     }
 
-    private ParentResponse toResponse(Parent p) {
+    private ParentResponse toResponse(Parent p, boolean includeChildren) {
         return new ParentResponse(
             p.getId(),
             p.getTenantId(),
@@ -93,7 +93,8 @@ public class ParentController {
             p.getPhone(),
             p.getEmail(),
             p.getProfession(),
-            p.getAddress()
+            p.getAddress(),
+            includeChildren ? parentService.listChildren(p.getId()) : List.of()
         );
     }
 

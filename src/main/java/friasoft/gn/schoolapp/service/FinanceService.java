@@ -109,6 +109,7 @@ public class FinanceService {
             yearLabel,
             p.getReceiptReference(),
             p.getRecordedBy(),
+            p.getPaymentReference(),
             p.getValidatedBy() != null ? p.getValidatedBy().getFullname() : null,
             tuitionMonthLabelForPayment(p)
         );
@@ -153,6 +154,7 @@ public class FinanceService {
         double amount,
         String receiptReference,
         String recordedBy,
+        String paymentReference,
         List<ReceiptLine> linesOut
     ) {
         if (amount <= 0d) {
@@ -167,6 +169,7 @@ public class FinanceService {
         p.setPaymentType(Payment.PaymentType.FOURNITURES);
         p.setReceiptReference(receiptReference);
         p.setRecordedBy(recordedBy);
+        p.setPaymentReference(paymentReference);
         attachPaymentValidator(p);
         paymentRepository.save(p);
         appendReceiptLine(linesOut, Payment.PaymentType.FOURNITURES, amount, null);
@@ -374,7 +377,7 @@ public class FinanceService {
         Payment.PaymentMode paymentMode = parsePaymentMode(paymentModeRaw);
         String ref = newReceiptReference();
         return allocateAndPersistFromDeclaredTotal(
-            account, info, paymentMode, normalizeCurrency(currency), total, ref, "Inscription", null);
+            account, info, paymentMode, normalizeCurrency(currency), total, ref, "Inscription", null, null);
     }
 
     @Transactional
@@ -397,6 +400,7 @@ public class FinanceService {
             .orElseThrow(() -> new IllegalArgumentException("Compte élève introuvable."));
 
         Payment.PaymentMode paymentMode = parsePaymentMode(request.paymentMode());
+        String paymentReference = normalizePaymentReference(paymentMode, request.paymentReference());
         String currency = normalizeCurrency(request.currency());
         double totalCollected;
 
@@ -411,7 +415,7 @@ public class FinanceService {
                 throw new IllegalArgumentException("Le montant dépasse le reliquat dû pour cet élève.");
             }
             totalCollected = allocateAndPersistFromDeclaredTotal(
-                account, info, paymentMode, currency, declared, receiptRef, recordedBy, receiptLines);
+                account, info, paymentMode, currency, declared, receiptRef, recordedBy, paymentReference, receiptLines);
         } else {
             double plannedLegacy = computeLegacyPlannedAmount(info, request);
             if (plannedLegacy <= 1e-6) {
@@ -434,6 +438,7 @@ public class FinanceService {
                     p.setAmount(amount);
                     p.setReceiptReference(receiptRef);
                     p.setRecordedBy(recordedBy);
+                    p.setPaymentReference(paymentReference);
                     p.setPaymentType("REINSCRIPTION".equalsIgnoreCase(info.insReinsType())
                         ? Payment.PaymentType.REINSCRIPTION
                         : Payment.PaymentType.INSCRIPTION);
@@ -449,7 +454,8 @@ public class FinanceService {
                 if (supRem > 0d) {
                     account.setSuppliesPaid(true);
                     studentAccountRepository.save(account);
-                    saveFournituresPayment(account, paymentMode, currency, supRem, receiptRef, recordedBy, receiptLines);
+                    saveFournituresPayment(
+                        account, paymentMode, currency, supRem, receiptRef, recordedBy, paymentReference, receiptLines);
                     totalCollected += supRem;
                 }
             }
@@ -481,6 +487,7 @@ public class FinanceService {
                     p.setAmount(remain);
                     p.setReceiptReference(receiptRef);
                     p.setRecordedBy(recordedBy);
+                    p.setPaymentReference(paymentReference);
                     p.setPaymentType(Payment.PaymentType.SCOLARITE);
                     String mCode = m.monthCode() != null ? m.monthCode().trim().toUpperCase(Locale.ROOT) : null;
                     p.setTuitionMonthCode(mCode);
@@ -499,6 +506,7 @@ public class FinanceService {
             paymentMode.name(),
             receiptRef,
             recordedBy,
+            paymentReference,
             List.copyOf(receiptLines)
         );
         final double totalMail = totalCollected;
@@ -562,6 +570,7 @@ public class FinanceService {
             yearLabel,
             ref,
             first.getRecordedBy(),
+            first.getPaymentReference(),
             mode,
             cur,
             when,
@@ -618,7 +627,30 @@ public class FinanceService {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("L'auteur du paiement est obligatoire.");
         }
-        return raw.trim();
+        String t = raw.trim();
+        if (t.length() > 200) {
+            throw new IllegalArgumentException("L'auteur du paiement ne peut pas dépasser 200 caractères.");
+        }
+        return t;
+    }
+
+    /**
+     * Référence transaction obligatoire hors espèces ; ignorée (null) pour ESPECES.
+     */
+    private static String normalizePaymentReference(Payment.PaymentMode mode, String raw) {
+        if (mode == null || mode == Payment.PaymentMode.ESPECES) {
+            return null;
+        }
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException(
+                "La référence de paiement est obligatoire pour Orange Money, Moov Money ou virement."
+            );
+        }
+        String t = raw.trim();
+        if (t.length() > 100) {
+            throw new IllegalArgumentException("La référence de paiement ne peut pas dépasser 100 caractères.");
+        }
+        return t;
     }
 
     private static void appendReceiptLine(
@@ -691,6 +723,7 @@ public class FinanceService {
         double total,
         String receiptReference,
         String recordedBy,
+        String paymentReference,
         List<ReceiptLine> linesOut
     ) {
         if (total <= 0d) {
@@ -710,6 +743,7 @@ public class FinanceService {
             p.setAmount(pay);
             p.setReceiptReference(receiptReference);
             p.setRecordedBy(recordedBy);
+            p.setPaymentReference(paymentReference);
             p.setPaymentType("REINSCRIPTION".equalsIgnoreCase(info.insReinsType())
                 ? Payment.PaymentType.REINSCRIPTION
                 : Payment.PaymentType.INSCRIPTION);
@@ -725,7 +759,8 @@ public class FinanceService {
             if (sup > 0d && R >= sup) {
                 account.setSuppliesPaid(true);
                 studentAccountRepository.save(account);
-                saveFournituresPayment(account, paymentMode, currency, sup, receiptReference, recordedBy, linesOut);
+                saveFournituresPayment(
+                    account, paymentMode, currency, sup, receiptReference, recordedBy, paymentReference, linesOut);
                 collected += sup;
                 R -= sup;
             }
@@ -752,6 +787,7 @@ public class FinanceService {
                 p.setAmount(pay);
                 p.setReceiptReference(receiptReference);
                 p.setRecordedBy(recordedBy);
+                p.setPaymentReference(paymentReference);
                 p.setPaymentType(Payment.PaymentType.SCOLARITE);
                 String mCode = m.monthCode() != null ? m.monthCode().trim().toUpperCase(Locale.ROOT) : null;
                 p.setTuitionMonthCode(mCode);

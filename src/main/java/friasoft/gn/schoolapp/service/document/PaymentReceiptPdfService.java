@@ -51,6 +51,9 @@ public class PaymentReceiptPdfService {
         model.put("schoolYearLabel", nullToDash(view.schoolYearLabel()));
         model.put("paymentMode", paymentModeFr(view.paymentMode()));
         model.put("recordedBy", nullToDash(view.recordedBy()));
+        model.put("paymentReference", nullToDash(view.paymentReference()));
+        model.put("showPaymentReference",
+            view.paymentReference() != null && !view.paymentReference().isBlank());
         model.put("totalAmount", formatAmount(view.totalCollected(), view.currency()));
         model.put("totalInWords", GnfAmountInWords.format(view.totalCollected() != null ? view.totalCollected() : 0d));
         model.put("duplicate", view.duplicate());

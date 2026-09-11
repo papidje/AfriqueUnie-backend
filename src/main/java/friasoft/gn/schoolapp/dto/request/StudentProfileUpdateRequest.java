@@ -11,5 +11,6 @@ public record StudentProfileUpdateRequest(
     String lastName,
     LocalDate birthDate,
     String emergencyContactName,
-    String emergencyContactPhone
+    String emergencyContactPhone,
+    String cardNumber
 ) {}

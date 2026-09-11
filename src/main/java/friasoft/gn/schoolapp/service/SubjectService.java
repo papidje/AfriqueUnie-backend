@@ -2,6 +2,7 @@ package friasoft.gn.schoolapp.service;
 
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.entity.school.Subject;
+import friasoft.gn.schoolapp.repository.IClassSubjectRepository;
 import friasoft.gn.schoolapp.repository.ISubjectRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,6 +20,7 @@ public class SubjectService {
 
     private final ISubjectRepository repository;
     private final SchoolService schoolService;
+    private final IClassSubjectRepository classSubjectRepository;
 
     @Transactional(readOnly = true)
     public List<Subject> findCatalogForSchool(Long schoolId) {
@@ -132,5 +134,72 @@ public class SubjectService {
         if (subject.getName() == null || subject.getName().isEmpty()) {
             throw new IllegalArgumentException("Le nom est obligatoire.");
         }
+    }
+
+    // —— Référentiel global (SuperAdmin) ——
+
+    @Transactional(readOnly = true)
+    public List<Subject> listGlobalSubjects() {
+        return repository.findGlobalSubjects();
+    }
+
+    @Transactional
+    public Subject createGlobal(String codeRaw, String nameRaw) {
+        Subject input = new Subject();
+        input.setCode(codeRaw);
+        input.setName(nameRaw);
+        trimFields(input);
+        validateRequired(input);
+        if (!repository.findGlobalByCode(input.getCode()).isEmpty()) {
+            throw new IllegalStateException("Une matière globale avec ce code existe déjà.");
+        }
+        input.setId(null);
+        input.setSchool(null);
+        try {
+            return repository.save(input);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException("Code matière déjà utilisé.", e);
+        }
+    }
+
+    @Transactional
+    public Subject updateGlobal(Long id, String codeRaw, String nameRaw) {
+        Subject existing = repository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Matière introuvable."));
+        if (existing.getSchool() != null) {
+            throw new IllegalArgumentException("Cette matière n’appartient pas au référentiel global.");
+        }
+        Subject input = new Subject();
+        input.setCode(codeRaw);
+        input.setName(nameRaw);
+        trimFields(input);
+        validateRequired(input);
+        for (Subject s : repository.findGlobalByCode(input.getCode())) {
+            if (!s.getId().equals(id)) {
+                throw new IllegalStateException("Une matière globale avec ce code existe déjà.");
+            }
+        }
+        existing.setCode(input.getCode());
+        existing.setName(input.getName());
+        try {
+            return repository.save(existing);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException("Code matière déjà utilisé.", e);
+        }
+    }
+
+    @Transactional
+    public void deleteGlobal(Long id) {
+        Subject existing = repository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Matière introuvable."));
+        if (existing.getSchool() != null) {
+            throw new IllegalArgumentException("Cette matière n’appartient pas au référentiel global.");
+        }
+        if (classSubjectRepository.existsBySubject_Id(id)) {
+            throw new IllegalStateException(
+                "Impossible de supprimer : la matière est affectée à une ou plusieurs classes."
+            );
+        }
+        repository.delete(existing);
     }
 }

@@ -186,6 +186,12 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
 
     boolean existsBySchoolClass_Id(Long schoolClassId);
 
+    boolean existsByMatricule(String matricule);
+
+    boolean existsByTenantIdAndCardNumber(Long tenantId, String cardNumber);
+
+    boolean existsByTenantIdAndCardNumberAndIdNot(Long tenantId, String cardNumber, Long id);
+
     @Query("""
         select distinct s from Student s
         left join fetch s.schoolClass sc
@@ -213,4 +219,45 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         @Param("fatherId") Long fatherId,
         @Param("motherId") Long motherId
     );
+
+    @Query("""
+        select distinct s from Student s
+        left join fetch s.schoolClass sc
+        left join fetch s.father
+        left join fetch s.mother
+        where s.father.id = :parentId or s.mother.id = :parentId
+        order by s.lastName asc, s.firstName asc, s.id asc
+        """)
+    List<Student> findAllByParentIdWithClass(@Param("parentId") Long parentId);
+
+    /**
+     * Élèves rattachés géographiquement via école directe ou école de la classe.
+     * Retourne [cityId, count].
+     */
+    @Query(value = """
+        SELECT city_id, COUNT(*) FROM (
+            SELECT COALESCE(sd.city_id, sy.city_id) AS city_id
+            FROM schools.students st
+            LEFT JOIN schools.schools sd ON sd.id = st.school_id
+            LEFT JOIN schools.school_classes sc ON sc.id = st.school_class_id
+            LEFT JOIN schools.school_years y ON y.id = sc.year_id
+            LEFT JOIN schools.schools sy ON sy.id = y.school_id
+        ) geo
+        WHERE city_id IS NOT NULL
+        GROUP BY city_id
+        """, nativeQuery = true)
+    List<Object[]> countStudentsGroupedByCityId();
+
+    @Query(value = """
+        SELECT COUNT(*) FROM (
+            SELECT 1
+            FROM schools.students st
+            LEFT JOIN schools.schools sd ON sd.id = st.school_id
+            LEFT JOIN schools.school_classes sc ON sc.id = st.school_class_id
+            LEFT JOIN schools.school_years y ON y.id = sc.year_id
+            LEFT JOIN schools.schools sy ON sy.id = y.school_id
+            WHERE COALESCE(sd.city_id, sy.city_id) IS NULL
+        ) missing
+        """, nativeQuery = true)
+    long countStudentsWithoutCity();
 }

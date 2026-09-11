@@ -42,6 +42,8 @@ public interface ISchoolClassRepository extends JpaRepository<SchoolClass, Long>
 
     Optional<SchoolClass> findByYear_IdAndLevel_CodeAndName(Long yearId, String levelCode, String name);
 
+    boolean existsByYear_IdAndLevel_IdAndNameAndIdNot(Long yearId, Long levelId, String name, Long id);
+
     @Query("""
         select sc from SchoolClass sc
         join fetch sc.year y

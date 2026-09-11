@@ -18,7 +18,12 @@ public final class FinancePaymentDtos {
         Boolean paySupplies,
         List<String> months,
         /** Nom de la personne ayant enregistré l’encaissement (obligatoire). */
-        String recordedBy
+        String recordedBy,
+        /**
+         * Référence transaction (Orange Money / Moov / virement).
+         * Obligatoire si le mode n’est pas ESPECES ; ignorée pour ESPECES.
+         */
+        String paymentReference
     ) {}
 
     public record CreatePaymentResponse(
@@ -29,6 +34,7 @@ public final class FinancePaymentDtos {
         String paymentMode,
         String receiptReference,
         String recordedBy,
+        String paymentReference,
         List<ReceiptLine> lines
     ) {}
 
@@ -39,6 +45,7 @@ public final class FinancePaymentDtos {
         String schoolYearLabel,
         String receiptReference,
         String recordedBy,
+        String paymentReference,
         String paymentMode,
         String currency,
         LocalDateTime paymentDate,

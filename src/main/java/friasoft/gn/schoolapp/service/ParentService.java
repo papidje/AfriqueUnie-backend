@@ -1,17 +1,23 @@
 package friasoft.gn.schoolapp.service;
 
-import friasoft.gn.schoolapp.dto.ParentSchoolListRow;
+import friasoft.gn.schoolapp.dto.ParentDtos.ParentChildRow;
 import friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest;
+import friasoft.gn.schoolapp.dto.ParentSchoolListRow;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.Parent;
+import friasoft.gn.schoolapp.entity.school.Student;
 import friasoft.gn.schoolapp.repository.IParentRepository;
+import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.util.GuineaContactValidation;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -19,6 +25,7 @@ import java.util.Optional;
 public class ParentService {
 
     private final IParentRepository parentRepository;
+    private final IStudentRepository studentRepository;
     private final SchoolService schoolService;
 
     @Transactional(readOnly = true)
@@ -56,6 +63,19 @@ public class ParentService {
             .filter(p -> tenantId.equals(p.getTenantId()));
     }
 
+    @Transactional(readOnly = true)
+    public List<ParentChildRow> listChildren(Long parentId) {
+        if (parentId == null) {
+            return List.of();
+        }
+        List<Student> students = studentRepository.findAllByParentIdWithClass(parentId);
+        Map<Long, ParentChildRow> byId = new LinkedHashMap<>();
+        for (Student s : students) {
+            byId.putIfAbsent(s.getId(), toChildRow(s, parentId));
+        }
+        return new ArrayList<>(byId.values());
+    }
+
     @Transactional
     public Parent update(Long id, ParentWriteRequest body) {
         Parent parent = findById(id)
@@ -77,6 +97,30 @@ public class ParentService {
         parent.setProfession(trimToNull(body.profession()));
         parent.setAddress(trimToNull(body.address()));
         return parentRepository.save(parent);
+    }
+
+    private static ParentChildRow toChildRow(Student s, Long parentId) {
+        boolean asFather = s.getFather() != null && parentId.equals(s.getFather().getId());
+        boolean asMother = s.getMother() != null && parentId.equals(s.getMother().getId());
+        String relation;
+        if (asFather && asMother) {
+            relation = "PERE_ET_MERE";
+        } else if (asFather) {
+            relation = "PERE";
+        } else {
+            relation = "MERE";
+        }
+        String className = s.getSchoolClass() != null ? s.getSchoolClass().getName() : null;
+        String status = s.getEnrollmentStatus() != null ? s.getEnrollmentStatus().name() : null;
+        return new ParentChildRow(
+            s.getId(),
+            s.getFirstName(),
+            s.getLastName(),
+            s.getMatricule(),
+            className,
+            status,
+            relation
+        );
     }
 
     private static String requireNonBlank(String value, String message) {

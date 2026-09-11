@@ -51,4 +51,6 @@ public interface IClassSubjectRepository extends JpaRepository<ClassSubject, Lon
         where y.school.id = :schoolId and y.active = true
         """)
     long countForActiveSchoolYear(@Param("schoolId") Long schoolId);
+
+    boolean existsBySubject_Id(Long subjectId);
 }

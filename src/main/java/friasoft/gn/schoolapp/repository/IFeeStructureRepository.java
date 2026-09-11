@@ -23,9 +23,9 @@ public interface IFeeStructureRepository extends JpaRepository<FeeStructure, Lon
         select fs
         from FeeStructure fs
         join fetch fs.classLevel cl
+        left join fetch cl.group
         join fetch fs.schoolYear sy
         where sy.id = :schoolYearId
-        order by cl.code
         """)
     List<FeeStructure> findAllBySchoolYearIdWithRefs(@Param("schoolYearId") Long schoolYearId);
 

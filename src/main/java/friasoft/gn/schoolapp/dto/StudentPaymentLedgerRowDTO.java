@@ -17,6 +17,8 @@ public record StudentPaymentLedgerRowDTO(
     String receiptReference,
     /** Saisie libre sur l’encaissement (figurait sur le reçu). */
     String recordedBy,
+    /** Référence opérateur/banque (hors espèces). */
+    String paymentReference,
     /** Nom du compte utilisateur ayant enregistré la ligne (historique uniquement). */
     String validatedByUserName,
     /** Libellé du mois pour les lignes SCOLARITE (ex. « Octobre »), null sinon. */

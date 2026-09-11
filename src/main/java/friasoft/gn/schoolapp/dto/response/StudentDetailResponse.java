@@ -21,6 +21,7 @@ public class StudentDetailResponse {
     private String birthPlace;
     private String nationality;
     private String matricule;
+    private String cardNumber;
     private String address;
     private String communicationPhone;
     private String communicationEmail;

@@ -1,10 +1,12 @@
 package friasoft.gn.schoolapp.entity.school;
 
+import friasoft.gn.schoolapp.entity.school.City;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.sql.Date;
 import java.time.Instant;
@@ -28,6 +30,11 @@ public class School {
     private String contact;
     private Date openDate;
     private String logo;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "city_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private City city;
 
     /** Clé thème front (ex. classique, emeraude, bordeaux) — white label. */
     @Column(name = "theme_name", length = 64)

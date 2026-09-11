@@ -3,6 +3,7 @@ package friasoft.gn.schoolapp.controller;
 import friasoft.gn.schoolapp.dto.GradingDtos.PeriodNotesGridResponse;
 import friasoft.gn.schoolapp.dto.EvaluationDtos.UpdateClassPeriodTypeRequest;
 import friasoft.gn.schoolapp.dto.EvaluationDtos.UpdateGradingPeriodsScheduleRequest;
+import friasoft.gn.schoolapp.dto.SchoolClassDtos.UpdateSchoolClassRequest;
 import friasoft.gn.schoolapp.dto.response.SchoolClassOverviewResponse;
 import friasoft.gn.schoolapp.entity.school.SchoolClass;
 import friasoft.gn.schoolapp.service.GradingPeriodSettingsService;
@@ -162,6 +163,26 @@ public class SchoolClassController {
             return ResponseEntity.status(HttpStatus.CREATED).body(service.save(schoolClass));
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
+    }
+
+    @PreAuthorize(WRITE)
+    @PutMapping("/{id}")
+    public ResponseEntity<SchoolClass> update(
+        @PathVariable Long id,
+        @RequestBody UpdateSchoolClassRequest body
+    ) {
+        try {
+            return ResponseEntity.ok(service.update(id, body));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(
+                e.getMessage() != null && e.getMessage().contains("introuvable")
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST,
+                e.getMessage()
+            );
         } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }

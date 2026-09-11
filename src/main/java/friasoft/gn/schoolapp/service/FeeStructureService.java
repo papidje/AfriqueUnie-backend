@@ -10,11 +10,13 @@ import friasoft.gn.schoolapp.repository.IClassLevelRepository;
 import friasoft.gn.schoolapp.repository.IFeeStructureRepository;
 import friasoft.gn.schoolapp.repository.IPaymentRepository;
 import friasoft.gn.schoolapp.repository.ISchoolYearRepository;
+import friasoft.gn.schoolapp.util.ClassLevelOrdering;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -36,6 +38,10 @@ public class FeeStructureService {
             paymentRepository.findClassLevelIdsWithPaymentsForSchoolYear(year.getId())
         );
         return feeStructureRepository.findAllBySchoolYearIdWithRefs(year.getId()).stream()
+            .sorted(Comparator.comparing(
+                FeeStructure::getClassLevel,
+                Comparator.nullsLast(ClassLevelOrdering.classLevelComparator())
+            ))
             .map(fs -> toResponse(fs, lockedLevels.contains(fs.getClassLevel().getId())))
             .toList();
     }

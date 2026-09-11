@@ -37,6 +37,7 @@ public class StudentMapper {
             .birthPlace(student.getBirthPlace())
             .nationality(student.getNationality())
             .matricule(student.getMatricule())
+            .cardNumber(student.getCardNumber())
             .address(student.getAddress())
             .communicationPhone(student.getCommunicationPhone())
             .communicationEmail(student.getCommunicationEmail())
@@ -87,7 +88,8 @@ public class StudentMapper {
             p.getPhone(),
             p.getEmail(),
             p.getProfession(),
-            p.getAddress()
+            p.getAddress(),
+            java.util.List.of()
         );
     }
 

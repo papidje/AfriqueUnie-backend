@@ -83,6 +83,13 @@ public class Payment implements TenantAware {
     @Column(name = "recorded_by", length = 200)
     private String recordedBy;
 
+    /**
+     * Référence transaction (Orange Money, Moov, virement…).
+     * Null pour les paiements en espèces.
+     */
+    @Column(name = "payment_reference", length = 100)
+    private String paymentReference;
+
     /** Pour {@link PaymentType#SCOLARITE} : code mois (ex. OCT, NOV, …). Null pour les autres types ou données historiques. */
     @Column(name = "tuition_month_code", length = 16)
     private String tuitionMonthCode;

@@ -1,5 +1,6 @@
 package friasoft.gn.schoolapp.service;
 
+import friasoft.gn.schoolapp.dto.SchoolClassDtos.UpdateSchoolClassRequest;
 import friasoft.gn.schoolapp.dto.response.SchoolClassOverviewResponse;
 import friasoft.gn.schoolapp.entity.school.ClassLevel;
 import friasoft.gn.schoolapp.entity.school.ClassLevelGroup;
@@ -11,6 +12,7 @@ import friasoft.gn.schoolapp.repository.IClassSubjectRepository;
 import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.ISchoolYearRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
+import friasoft.gn.schoolapp.util.ClassLevelOrdering;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +76,57 @@ public class SchoolClassService {
         return saved;
     }
 
+    /**
+     * Met à jour le nom, le niveau et la capacité. L’année et le type de période restent inchangés.
+     */
+    @Transactional
+    public SchoolClass update(Long classId, UpdateSchoolClassRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Corps de requête obligatoire.");
+        }
+        String name = request.name() != null ? request.name().trim() : "";
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("Le nom de la classe est obligatoire.");
+        }
+        if (name.length() > 50) {
+            throw new IllegalArgumentException("Le nom de la classe ne peut pas dépasser 50 caractères.");
+        }
+        if (request.levelId() == null) {
+            throw new IllegalArgumentException("levelId est obligatoire.");
+        }
+        Integer capacity = request.capacity();
+        if (capacity == null || capacity < 1 || capacity > 200) {
+            throw new IllegalArgumentException("La capacité doit être entre 1 et 200.");
+        }
+
+        SchoolClass sc = repository.findByIdWithYearAndSchool(classId)
+            .orElseThrow(() -> new IllegalArgumentException("Classe introuvable."));
+        schoolService.assertCurrentUserCanAccessSchool(sc.getYear().getSchool().getId());
+
+        ClassLevel level = classLevelRepository.findById(request.levelId())
+            .orElseThrow(() -> new IllegalArgumentException("Niveau introuvable."));
+
+        long enrolled = studentRepository.countBySchoolClass_Id(classId);
+        if (capacity < enrolled) {
+            throw new IllegalArgumentException(
+                "La capacité (" + capacity + ") ne peut pas être inférieure à l’effectif actuel ("
+                    + enrolled + ")."
+            );
+        }
+
+        Long yearId = sc.getYear().getId();
+        if (repository.existsByYear_IdAndLevel_IdAndNameAndIdNot(yearId, level.getId(), name, classId)) {
+            throw new IllegalStateException(
+                "Une classe avec ce nom existe déjà pour ce niveau sur l’année scolaire."
+            );
+        }
+
+        sc.setName(name);
+        sc.setLevel(level);
+        sc.setCapacity(capacity);
+        return repository.save(sc);
+    }
+
     public Optional<SchoolClass> findById(Long id) {
         return repository.findByIdWithYearAndSchool(id)
             .map(sc -> {
@@ -83,11 +136,12 @@ public class SchoolClassService {
             .filter(this::isSchoolClassVisibleToTeacherIfApplicable);
     }
 
+    @Transactional(readOnly = true)
     public List<SchoolClass> findByYear(Long yearId) {
         SchoolYear year = schoolYearRepository.findByIdWithSchool(yearId)
             .orElseThrow(() -> new IllegalArgumentException("Année scolaire introuvable."));
         schoolService.assertCurrentUserCanAccessSchool(year.getSchool().getId());
-        return filterClassesForTeacher(repository.findByYear_Id(yearId));
+        return sortClasses(filterClassesForTeacher(repository.findByYear_Id(yearId)));
     }
 
     /**
@@ -97,15 +151,15 @@ public class SchoolClassService {
     @Transactional(readOnly = true)
     public List<SchoolClass> listForActiveSchoolYear(Long schoolId) {
         schoolService.assertCurrentUserCanAccessSchool(schoolId);
-        return filterClassesForTeacher(repository.findByYear_School_IdAndYear_ActiveTrue(schoolId));
+        return sortClasses(filterClassesForTeacher(repository.findByYear_School_IdAndYear_ActiveTrue(schoolId)));
     }
 
     @Transactional(readOnly = true)
     public List<SchoolClassOverviewResponse> listOverviewForActiveSchoolYear(Long schoolId) {
         schoolService.assertCurrentUserCanAccessSchool(schoolId);
-        List<SchoolClass> classes = filterClassesForTeacher(
+        List<SchoolClass> classes = sortClasses(filterClassesForTeacher(
             repository.findByYear_School_IdAndYear_ActiveTrue(schoolId)
-        );
+        ));
         if (classes.isEmpty()) {
             return List.of();
         }
@@ -119,6 +173,10 @@ public class SchoolClassService {
                 subjectsByClass.getOrDefault(sc.getId(), 0L)
             ))
             .toList();
+    }
+
+    private static List<SchoolClass> sortClasses(List<SchoolClass> classes) {
+        return classes.stream().sorted(ClassLevelOrdering.schoolClassComparator()).toList();
     }
 
     private List<SchoolClass> filterClassesForTeacher(List<SchoolClass> classes) {

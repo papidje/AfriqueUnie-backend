@@ -13,7 +13,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Data
 @NoArgsConstructor
@@ -60,6 +60,10 @@ public class Student implements TenantAware {
     private String nationality;
 
     private String matricule;
+
+    /** Numéro de carte scolaire (nouvelle à l’inscription ; modifiable en cas de perte). */
+    @Column(name = "card_number", length = 50)
+    private String cardNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "school_id")
@@ -139,13 +143,21 @@ public class Student implements TenantAware {
         TRANSFERE
     }
 
+    /**
+     * Format : {@code [1|2]}{@code AAAA}{@code MM}{@code RRRR}
+     * (civilité, année, mois sur 2 chiffres, aléatoire sur 4 chiffres).
+     */
     public String buildMatricule() {
-        Random random = new Random();
-        return new StringBuilder()
-            .append(civility == Civility.MONSIEUR ? "1" : "2")
-            .append(birthDate.getYear())
-            .append(birthDate.getMonth())
-            .append(random.nextInt(999999))
-            .toString();
+        if (birthDate == null) {
+            throw new IllegalStateException("Date de naissance obligatoire pour générer le matricule.");
+        }
+        int suffix = ThreadLocalRandom.current().nextInt(10_000);
+        return String.format(
+            "%s%04d%02d%04d",
+            civility == Civility.MONSIEUR ? "1" : "2",
+            birthDate.getYear(),
+            birthDate.getMonthValue(),
+            suffix
+        );
     }
 }
