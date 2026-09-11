@@ -4,6 +4,7 @@ import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoCityStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoRegionStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoTotalsDto;
+import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolRowDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminTenantRowDto;
 import friasoft.gn.schoolapp.dto.response.TenantSchoolSummaryDto;
 import friasoft.gn.schoolapp.entity.school.City;
@@ -24,6 +25,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -57,6 +59,47 @@ public class SuperAdminService {
                     .map(s -> new TenantSchoolSummaryDto(s.getId(), s.getName(), s.isActive()))
                     .toList()
             ))
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SuperAdminSchoolRowDto> listSchools() {
+        Map<Long, Tenant> tenantsById = tenantRepository.findAll().stream()
+            .collect(Collectors.toMap(Tenant::getId, Function.identity(), (a, b) -> a));
+
+        Map<Long, Long> studentsBySchool = new HashMap<>();
+        for (Object[] row : studentRepository.countStudentsGroupedBySchoolId()) {
+            studentsBySchool.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+
+        return schoolRepository.findAll().stream()
+            .sorted(Comparator
+                .comparing((School s) -> {
+                    Tenant t = s.getTenantId() == null ? null : tenantsById.get(s.getTenantId());
+                    return t != null ? t.getName() : "";
+                }, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(School::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+            .map(s -> {
+                Tenant tenant = s.getTenantId() == null ? null : tenantsById.get(s.getTenantId());
+                City city = s.getCity();
+                Region region = city != null ? city.getRegion() : null;
+                return new SuperAdminSchoolRowDto(
+                    s.getId(),
+                    s.getName(),
+                    s.getAdress(),
+                    s.getContact(),
+                    s.getOpenDate(),
+                    s.getLogo(),
+                    s.isActive(),
+                    s.getCreated_at(),
+                    s.getTenantId(),
+                    tenant != null ? tenant.getName() : null,
+                    city != null ? city.getId() : null,
+                    city != null ? city.getName() : null,
+                    region != null ? region.getName() : null,
+                    studentsBySchool.getOrDefault(s.getId(), 0L)
+                );
+            })
             .toList();
     }
 

@@ -260,4 +260,17 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         ) missing
         """, nativeQuery = true)
     long countStudentsWithoutCity();
+
+    /** Retourne [schoolId, count] via école directe ou école de la classe. */
+    @Query(value = """
+        SELECT school_id, COUNT(*) FROM (
+            SELECT COALESCE(st.school_id, y.school_id) AS school_id
+            FROM schools.students st
+            LEFT JOIN schools.school_classes sc ON sc.id = st.school_class_id
+            LEFT JOIN schools.school_years y ON y.id = sc.year_id
+        ) geo
+        WHERE school_id IS NOT NULL
+        GROUP BY school_id
+        """, nativeQuery = true)
+    List<Object[]> countStudentsGroupedBySchoolId();
 }

@@ -3,6 +3,7 @@ package friasoft.gn.schoolapp.controller;
 import friasoft.gn.schoolapp.dto.CityDtos.CityRequest;
 import friasoft.gn.schoolapp.dto.CityDtos.CityResponse;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto;
+import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolRowDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminTenantRowDto;
 import friasoft.gn.schoolapp.entity.school.Region;
 import friasoft.gn.schoolapp.entity.school.Subject;
@@ -33,6 +34,11 @@ public class SuperAdminController {
     @GetMapping("/tenants")
     public List<SuperAdminTenantRowDto> listTenantsWithSchools() {
         return superAdminService.listTenantsWithSchools();
+    }
+
+    @GetMapping("/schools")
+    public List<SuperAdminSchoolRowDto> listSchools() {
+        return superAdminService.listSchools();
     }
 
     /** P2/P3 — agrégats écoles/élèves par région et par ville (+ coords pour carte). */
