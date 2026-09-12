@@ -116,6 +116,71 @@ public interface UserSchoolAffiliationRepository extends JpaRepository<UserSchoo
 
     @Query(
         """
+            SELECT CASE WHEN COUNT(a1) > 0 THEN true ELSE false END
+            FROM UserSchoolAffiliation a1, UserSchoolAffiliation a2
+            WHERE a1.user.id = :userA AND a2.user.id = :userB
+            AND a1.active = true AND a2.active = true
+            AND a1.school.id = a2.school.id
+            """
+    )
+    boolean shareActiveSchool(@Param("userA") Long userA, @Param("userB") Long userB);
+
+    @Query(
+        """
+            SELECT DISTINCT u FROM User u
+            JOIN u.affiliations a
+            JOIN a.school s
+            WHERE a.active = true
+            AND s.tenantId = :tenantId
+            AND u.id <> :excludeUserId
+            AND u.isActive = true
+            AND (
+                :q IS NULL OR :q = ''
+                OR LOWER(COALESCE(u.fullname, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+            )
+            ORDER BY u.fullname ASC
+            """
+    )
+    List<User> findActiveAffiliatedUsersByTenant(
+        @Param("tenantId") Long tenantId,
+        @Param("excludeUserId") Long excludeUserId,
+        @Param("q") String q
+    );
+
+    @Query(
+        """
+            SELECT DISTINCT u FROM User u
+            JOIN u.affiliations a
+            WHERE a.active = true
+            AND a.school.id IN :schoolIds
+            AND u.id <> :excludeUserId
+            AND u.isActive = true
+            AND (
+                :q IS NULL OR :q = ''
+                OR LOWER(COALESCE(u.fullname, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+                OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :q, '%'))
+            )
+            ORDER BY u.fullname ASC
+            """
+    )
+    List<User> findActiveAffiliatedUsersBySchoolIds(
+        @Param("schoolIds") Collection<Long> schoolIds,
+        @Param("excludeUserId") Long excludeUserId,
+        @Param("q") String q
+    );
+
+    @Query(
+        """
+            SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END
+            FROM UserSchoolAffiliation a
+            WHERE a.user.id = :userId AND a.active = true AND a.school.tenantId = :tenantId
+            """
+    )
+    boolean hasActiveAffiliationInTenant(@Param("userId") Long userId, @Param("tenantId") Long tenantId);
+
+    @Query(
+        """
             SELECT a FROM UserSchoolAffiliation a JOIN FETCH a.school s
             WHERE a.id = :id AND a.user.id = :userId
             """
