@@ -27,7 +27,8 @@ public interface MessagingConversationRepository extends JpaRepository<Messaging
         SELECT DISTINCT c FROM MessagingConversation c
         JOIN MessagingParticipant me ON me.conversation = c AND me.user.id = :userId
         JOIN MessagingParticipant other ON other.conversation = c AND other.user.id <> :userId
-        WHERE (:q IS NULL OR :q = '' OR LOWER(other.user.fullname) LIKE LOWER(CONCAT('%', :q, '%'))
+        WHERE c.lastMessageAt IS NOT NULL
+        AND (:q IS NULL OR :q = '' OR LOWER(other.user.fullname) LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(COALESCE(c.lastMessagePreview, '')) LIKE LOWER(CONCAT('%', :q, '%')))
         ORDER BY c.lastMessageAt DESC NULLS LAST, c.id DESC
         """)
