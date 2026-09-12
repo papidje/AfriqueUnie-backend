@@ -92,14 +92,32 @@ public class JwtFilter extends OncePerRequestFilter {
         return "/auth/logout".equals(normalizedPathWithinContext(request));
     }
 
-    /** Refuse les sessions rattachées à un tenant désactivé (sauf déconnexion et super-admin). */
+    /**
+     * Endpoints encore utilisables quand l’organisation est désactivée :
+     * déconnexion, centre de notifications, messagerie (API à venir).
+     */
+    private static boolean isAllowedWhenTenantDisabled(HttpServletRequest request) {
+        if (isLogoutPath(request)) {
+            return true;
+        }
+        String p = normalizedPathWithinContext(request);
+        if ("/notifications".equals(p) || p.startsWith("/notifications/")) {
+            return true;
+        }
+        return "/messagerie".equals(p)
+            || p.startsWith("/messagerie/")
+            || "/messaging".equals(p)
+            || p.startsWith("/messaging/");
+    }
+
+    /** Refuse les sessions rattachées à un tenant désactivé (sauf exceptions listées). */
     private boolean rejectIfTenantInactive(
         Long tenantId,
         boolean isSuperAdmin,
         HttpServletRequest request,
         HttpServletResponse response
     ) throws IOException {
-        if (isSuperAdmin || tenantId == null || isLogoutPath(request)) {
+        if (isSuperAdmin || tenantId == null || isAllowedWhenTenantDisabled(request)) {
             return false;
         }
         Tenant tenant = tenantRepository.findById(tenantId).orElse(null);

@@ -69,7 +69,6 @@ public class JwtService {
         if (!user.isActive()) {
             throw new AccountDisabledException();
         }
-        assertUserOrganizationTenantActive(user);
         if (fromLogin) {
             user.setLastLoginAt(Instant.now());
             userService.saveUser(user);
@@ -324,6 +323,13 @@ public class JwtService {
         }
         claims.put("tenant_id", tenantClaim);
 
+        boolean tenantDisabled = false;
+        if (tenantClaim != null && platformRole != User.UserRole.SUPER_ADMIN) {
+            Tenant org = tenantRepository.findById(tenantClaim).orElse(null);
+            tenantDisabled = org != null && !org.isActive();
+        }
+        claims.put("tenant_disabled", tenantDisabled);
+
         claims.put(Claims.EXPIRATION, new Date(expirationTime));
         claims.put(Claims.SUBJECT, user.getEmail());
         claims.put("roles", new ArrayList<>(jwtAuthorities));
@@ -461,21 +467,19 @@ public class JwtService {
         if (!user.isActive()) {
             throw new AccountDisabledException();
         }
-        assertUserOrganizationTenantActive(user);
         Long activeSchoolId = jwt.getActiveSchoolId();
         this.disableTokens(user);
 
         try {
             if (activeSchoolId != null) {
                 School school = schoolRepository.findById(activeSchoolId).orElse(null);
-                if (school != null && schoolSecurity.canAccessSchool(user, school)) {
-                    assertTenantActive(school.getTenantId());
+                if (school != null
+                    && schoolSecurity.canAccessSchool(user, school)
+                    && isTenantActive(school.getTenantId())) {
                     List<GrantedAuthority> authorities = resolveAuthoritiesForSchool(user, activeSchoolId);
                     return issueFullTokenPair(user, activeSchoolId, authorities, user.getLastLoginAt());
                 }
             }
-        } catch (TenantDisabledException ex) {
-            throw ex;
         } catch (ResponseStatusException ex) {
             log.debug("Refresh : contexte école {} invalide, repli login : {}", activeSchoolId, ex.getReason());
         }
@@ -484,27 +488,16 @@ public class JwtService {
         return issueFullTokenPair(user, ctx.activeSchoolId(), ctx.jwtAuthorities(), user.getLastLoginAt());
     }
 
-    /**
-     * Super-admin plateforme : pas de tenant métier. Sinon refuse si l’organisation rattachée est inactive.
-     */
-    private void assertUserOrganizationTenantActive(User user) {
-        UserPlatformRole platform = userPlatformRoleRepository.findByUser_Id(user.getId()).orElse(null);
-        if (platform != null && platform.getRole() == User.UserRole.SUPER_ADMIN) {
-            return;
-        }
-        Long tenantId = user.getOrganizationTenantId();
+    private boolean isTenantActive(Long tenantId) {
         if (tenantId == null) {
-            tenantId = user.getTenantId();
+            return true;
         }
-        assertTenantActive(tenantId);
+        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
+        return tenant == null || tenant.isActive();
     }
 
     private void assertTenantActive(Long tenantId) {
-        if (tenantId == null) {
-            return;
-        }
-        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
-        if (tenant != null && !tenant.isActive()) {
+        if (!isTenantActive(tenantId)) {
             throw new TenantDisabledException();
         }
     }
