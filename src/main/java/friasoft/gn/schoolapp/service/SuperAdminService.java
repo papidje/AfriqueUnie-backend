@@ -1,12 +1,15 @@
 package friasoft.gn.schoolapp.service;
 
+import friasoft.gn.schoolapp.dto.request.TenantActiveUpdateRequest;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoCityStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoRegionStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoTotalsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolRowDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminTenantRowDto;
+import friasoft.gn.schoolapp.dto.response.TenantAdminSummaryDto;
 import friasoft.gn.schoolapp.dto.response.TenantSchoolSummaryDto;
+import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.City;
 import friasoft.gn.schoolapp.entity.school.Region;
 import friasoft.gn.schoolapp.entity.school.School;
@@ -16,10 +19,12 @@ import friasoft.gn.schoolapp.repository.IRegionRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.TenantRepository;
+import friasoft.gn.schoolapp.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,11 +37,15 @@ import java.util.stream.Collectors;
 @Service
 public class SuperAdminService {
 
+    /** Au-delà de ce seuil, l’activation exige une date de fin d’abonnement. */
+    public static final long SUBSCRIPTION_REQUIRED_STUDENT_THRESHOLD = 100L;
+
     private final TenantRepository tenantRepository;
     private final SchoolRepository schoolRepository;
     private final IStudentRepository studentRepository;
     private final ICityRepository cityRepository;
     private final IRegionRepository regionRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public List<SuperAdminTenantRowDto> listTenantsWithSchools() {
@@ -45,21 +54,140 @@ public class SuperAdminService {
         Map<Long, List<School>> schoolsByTenant = schools.stream()
             .filter(s -> s.getTenantId() != null)
             .collect(Collectors.groupingBy(School::getTenantId));
+        Map<Long, Long> studentsByTenant = studentsByTenantId(schoolsByTenant);
+        Map<Long, List<TenantAdminSummaryDto>> adminsByTenant = adminsByTenantId();
 
         return tenants.stream()
             .sorted(Comparator.comparing(Tenant::getId))
-            .map(t -> new SuperAdminTenantRowDto(
-                t.getId(),
-                t.getName(),
-                t.getAddress(),
-                t.getLogo(),
-                t.getCreatedAt(),
-                schoolsByTenant.getOrDefault(t.getId(), List.of()).stream()
-                    .sorted(Comparator.comparing(School::getId))
-                    .map(s -> new TenantSchoolSummaryDto(s.getId(), s.getName(), s.isActive()))
-                    .toList()
+            .map(t -> toTenantRow(
+                t,
+                schoolsByTenant.getOrDefault(t.getId(), List.of()),
+                studentsByTenant.getOrDefault(t.getId(), 0L),
+                adminsByTenant.getOrDefault(t.getId(), List.of())
             ))
             .toList();
+    }
+
+    @Transactional
+    public SuperAdminTenantRowDto setTenantActive(Long id, boolean active, TenantActiveUpdateRequest body) {
+        Tenant tenant = tenantRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Tenant introuvable."));
+
+        List<School> schools = schoolRepository.findByTenantIdOrderByIdAsc(id);
+        long studentCount = countStudentsForSchools(schools);
+
+        if (active) {
+            LocalDate endsOn = body != null ? body.subscriptionEndsOn() : null;
+            if (studentCount > SUBSCRIPTION_REQUIRED_STUDENT_THRESHOLD) {
+                if (endsOn == null) {
+                    throw new IllegalStateException(
+                        "Une date de fin d’abonnement est obligatoire pour activer un tenant de plus de "
+                            + SUBSCRIPTION_REQUIRED_STUDENT_THRESHOLD
+                            + " élèves (actuellement "
+                            + studentCount
+                            + ")."
+                    );
+                }
+                if (endsOn.isBefore(LocalDate.now())) {
+                    throw new IllegalStateException(
+                        "La date de fin d’abonnement doit être aujourd’hui ou une date future."
+                    );
+                }
+                tenant.setSubscriptionEndsOn(endsOn);
+            } else if (endsOn != null) {
+                if (endsOn.isBefore(LocalDate.now())) {
+                    throw new IllegalStateException(
+                        "La date de fin d’abonnement doit être aujourd’hui ou une date future."
+                    );
+                }
+                tenant.setSubscriptionEndsOn(endsOn);
+            }
+        }
+
+        tenant.setActive(active);
+        tenant = tenantRepository.save(tenant);
+        return toTenantRow(
+            tenant,
+            schools,
+            studentCount,
+            adminsByTenantId().getOrDefault(id, List.of())
+        );
+    }
+
+    private SuperAdminTenantRowDto toTenantRow(
+        Tenant t,
+        List<School> schools,
+        long studentCount,
+        List<TenantAdminSummaryDto> admins
+    ) {
+        return new SuperAdminTenantRowDto(
+            t.getId(),
+            t.getName(),
+            t.getAddress(),
+            t.getLogo(),
+            t.getCreatedAt(),
+            t.isActive(),
+            t.getSubscriptionEndsOn(),
+            studentCount,
+            admins,
+            schools.stream()
+                .sorted(Comparator.comparing(School::getId))
+                .map(s -> new TenantSchoolSummaryDto(s.getId(), s.getName(), s.isActive()))
+                .toList()
+        );
+    }
+
+    private Map<Long, Long> studentsByTenantId(Map<Long, List<School>> schoolsByTenant) {
+        Map<Long, Long> studentsBySchool = new HashMap<>();
+        for (Object[] row : studentRepository.countStudentsGroupedBySchoolId()) {
+            studentsBySchool.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        Map<Long, Long> byTenant = new HashMap<>();
+        for (Map.Entry<Long, List<School>> e : schoolsByTenant.entrySet()) {
+            long sum = 0L;
+            for (School s : e.getValue()) {
+                sum += studentsBySchool.getOrDefault(s.getId(), 0L);
+            }
+            byTenant.put(e.getKey(), sum);
+        }
+        return byTenant;
+    }
+
+    private long countStudentsForSchools(List<School> schools) {
+        if (schools.isEmpty()) {
+            return 0L;
+        }
+        Map<Long, Long> studentsBySchool = new HashMap<>();
+        for (Object[] row : studentRepository.countStudentsGroupedBySchoolId()) {
+            studentsBySchool.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        long sum = 0L;
+        for (School s : schools) {
+            sum += studentsBySchool.getOrDefault(s.getId(), 0L);
+        }
+        return sum;
+    }
+
+    private Map<Long, List<TenantAdminSummaryDto>> adminsByTenantId() {
+        return userRepository.findAllOrganizationAdmins().stream()
+            .filter(u -> u.getOrganizationTenantId() != null)
+            .collect(Collectors.groupingBy(
+                User::getOrganizationTenantId,
+                Collectors.mapping(this::toAdminSummary, Collectors.toList())
+            ));
+    }
+
+    private TenantAdminSummaryDto toAdminSummary(User u) {
+        String fullname = u.getFullname();
+        if (fullname == null || fullname.isBlank()) {
+            String fn = u.getFirstName() != null ? u.getFirstName().trim() : "";
+            String ln = u.getLastName() != null ? u.getLastName().trim() : "";
+            fullname = (fn + " " + ln).trim();
+        }
+        if (fullname == null || fullname.isBlank()) {
+            fullname = u.getEmail() != null ? u.getEmail() : "Administrateur";
+        }
+        return new TenantAdminSummaryDto(u.getId(), fullname, u.getEmail());
     }
 
     @Transactional(readOnly = true)

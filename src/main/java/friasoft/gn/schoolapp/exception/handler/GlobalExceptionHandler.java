@@ -12,6 +12,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import friasoft.gn.schoolapp.exception.AccountDisabledException;
+import friasoft.gn.schoolapp.exception.TenantDisabledException;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -52,6 +53,23 @@ public class GlobalExceptionHandler {
         }
         Map<String, Object> body = buildBody(status.value(), status.getReasonPhrase(), msg, request.getRequestURI());
         body.put("accountDisabled", true);
+        return ResponseEntity.status(status)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(body);
+    }
+
+    @ExceptionHandler(TenantDisabledException.class)
+    public ResponseEntity<Map<String, Object>> handleTenantDisabled(
+        TenantDisabledException ex,
+        HttpServletRequest request
+    ) {
+        HttpStatus status = HttpStatus.FORBIDDEN;
+        String msg = ex.getMessage();
+        if (msg == null || msg.isBlank()) {
+            msg = "Cette organisation a été désactivée.";
+        }
+        Map<String, Object> body = buildBody(status.value(), status.getReasonPhrase(), msg, request.getRequestURI());
+        body.put("tenantDisabled", true);
         return ResponseEntity.status(status)
             .contentType(MediaType.APPLICATION_JSON)
             .body(body);

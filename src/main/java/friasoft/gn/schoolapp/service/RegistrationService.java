@@ -41,6 +41,7 @@ public class RegistrationService {
         tenant.setName(request.tenantName());
         tenant.setAddress(schoolAddressNorm);
         tenant.setLogo(request.tenantLogo());
+        tenant.setActive(true);
         tenant = tenantRepository.save(tenant);
 
         String resolvedSchoolName = resolveSchoolName(request);

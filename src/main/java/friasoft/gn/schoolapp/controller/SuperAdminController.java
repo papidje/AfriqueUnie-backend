@@ -2,6 +2,7 @@ package friasoft.gn.schoolapp.controller;
 
 import friasoft.gn.schoolapp.dto.CityDtos.CityRequest;
 import friasoft.gn.schoolapp.dto.CityDtos.CityResponse;
+import friasoft.gn.schoolapp.dto.request.TenantActiveUpdateRequest;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolRowDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminTenantRowDto;
@@ -34,6 +35,21 @@ public class SuperAdminController {
     @GetMapping("/tenants")
     public List<SuperAdminTenantRowDto> listTenantsWithSchools() {
         return superAdminService.listTenantsWithSchools();
+    }
+
+    @PatchMapping("/tenants/{id}/active/{active}")
+    public SuperAdminTenantRowDto setTenantActive(
+        @PathVariable Long id,
+        @PathVariable boolean active,
+        @RequestBody(required = false) TenantActiveUpdateRequest body
+    ) {
+        try {
+            return superAdminService.setTenantActive(id, active, body);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
+        } catch (IllegalStateException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
     }
 
     @GetMapping("/schools")

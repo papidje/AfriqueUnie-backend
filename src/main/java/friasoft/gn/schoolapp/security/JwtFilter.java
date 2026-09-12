@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import friasoft.gn.schoolapp.entity.auth.Jwt;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.auth.UserPlatformRole;
+import friasoft.gn.schoolapp.entity.tenant.Tenant;
+import friasoft.gn.schoolapp.repository.TenantRepository;
 import friasoft.gn.schoolapp.repository.UserPlatformRoleRepository;
 import friasoft.gn.schoolapp.service.UserService;
 import friasoft.gn.schoolapp.tenancy.TenantContext;
@@ -31,17 +33,20 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final ObjectMapper objectMapper;
     private final UserPlatformRoleRepository userPlatformRoleRepository;
+    private final TenantRepository tenantRepository;
 
     public JwtFilter(
         UserService userService,
         JwtService jwtService,
         ObjectMapper objectMapper,
-        UserPlatformRoleRepository userPlatformRoleRepository
+        UserPlatformRoleRepository userPlatformRoleRepository,
+        TenantRepository tenantRepository
     ) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.objectMapper = objectMapper;
         this.userPlatformRoleRepository = userPlatformRoleRepository;
+        this.tenantRepository = tenantRepository;
     }
 
     private static boolean shouldParseBearerForAuthPath(HttpServletRequest request) {
@@ -81,6 +86,32 @@ public class JwtFilter extends OncePerRequestFilter {
         }
         String p = normalizedPathWithinContext(request);
         return "/notifications".equals(p) || "/notifications/unread-count".equals(p);
+    }
+
+    private static boolean isLogoutPath(HttpServletRequest request) {
+        return "/auth/logout".equals(normalizedPathWithinContext(request));
+    }
+
+    /** Refuse les sessions rattachées à un tenant désactivé (sauf déconnexion et super-admin). */
+    private boolean rejectIfTenantInactive(
+        Long tenantId,
+        boolean isSuperAdmin,
+        HttpServletRequest request,
+        HttpServletResponse response
+    ) throws IOException {
+        if (isSuperAdmin || tenantId == null || isLogoutPath(request)) {
+            return false;
+        }
+        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
+        if (tenant != null && !tenant.isActive()) {
+            ProblemDetailHttpResponses.writeForbiddenTenantDisabled(
+                response,
+                objectMapper,
+                "Cette organisation a été désactivée. Vous ne pouvez plus utiliser SchoolApp pour ses établissements."
+            );
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -155,6 +186,9 @@ public class JwtFilter extends OncePerRequestFilter {
                 if (!(schoollessNotificationsRead && tenantId == null)) {
                     TenantContext.setTenantId(tenantId);
                 }
+                if (rejectIfTenantInactive(tenantId, isSuperAdmin, request, response)) {
+                    return;
+                }
                 bearerResolvedUser = userService.loadUserByUsername(username);
                 if (schoollessNotificationsRead && tenantId == null && !isSuperAdmin) {
                     Long resolvedTenant = bearerResolvedUser.getTenantId();
@@ -163,6 +197,9 @@ public class JwtFilter extends OncePerRequestFilter {
                     }
                     if (resolvedTenant != null) {
                         TenantContext.setTenantId(resolvedTenant);
+                        if (rejectIfTenantInactive(resolvedTenant, false, request, response)) {
+                            return;
+                        }
                     }
                 }
                 if (!bearerResolvedUser.isActive()) {

@@ -14,6 +14,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -32,6 +33,16 @@ public class Tenant {
     private String address;
 
     private String logo;
+
+    /** Tenant actif : faux = portail bloqué pour ses utilisateurs. Nouveaux tenants = actifs. */
+    @Column(name = "is_active", nullable = false)
+    private boolean active = true;
+
+    /**
+     * Fin d’abonnement commerciale. {@code null} = sans échéance (accès non borné dans le temps).
+     */
+    @Column(name = "subscription_ends_on")
+    private LocalDate subscriptionEndsOn;
 
     @CreationTimestamp
     private Instant createdAt;

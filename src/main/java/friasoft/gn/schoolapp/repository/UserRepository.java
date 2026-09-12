@@ -79,4 +79,14 @@ public interface UserRepository extends JpaRepository<User, Long>{
     /** {@code school_id} : directeur, staff, enseignant ; absent pour admin organisation / super admin. */
     @Query("select u.school.id from User u where u.id = :userId and u.school is not null")
     Optional<Long> findSchoolIdByUserId(@Param("userId") Long userId);
+
+    /** Administrateurs d’organisation ({@code ADMIN_ECOLE}) rattachés à un {@code tenant_id}. */
+    @Query("""
+        SELECT u FROM User u
+        JOIN u.platformRole pr
+        WHERE pr.role = friasoft.gn.schoolapp.entity.auth.User$UserRole.ADMIN_ECOLE
+        AND u.tenantId IS NOT NULL
+        ORDER BY u.tenantId ASC, u.fullname ASC
+        """)
+    List<User> findAllOrganizationAdmins();
 }

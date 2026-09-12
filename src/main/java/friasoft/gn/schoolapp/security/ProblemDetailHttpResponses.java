@@ -39,6 +39,19 @@ final class ProblemDetailHttpResponses {
         );
     }
 
+    /** Tenant désactivé : portail bloqué pour les utilisateurs de l’organisation. */
+    static void writeForbiddenTenantDisabled(HttpServletResponse response, ObjectMapper objectMapper, String message)
+        throws IOException {
+        writeJsonError(
+            response,
+            objectMapper,
+            HttpServletResponse.SC_FORBIDDEN,
+            "Forbidden",
+            message,
+            Map.of("tenantDisabled", Boolean.TRUE)
+        );
+    }
+
     private static void writeJsonError(
         HttpServletResponse response,
         ObjectMapper objectMapper,

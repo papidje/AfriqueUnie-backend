@@ -1,10 +1,12 @@
 package friasoft.gn.schoolapp.security;
 
 import friasoft.gn.schoolapp.exception.AccountDisabledException;
+import friasoft.gn.schoolapp.exception.TenantDisabledException;
 import friasoft.gn.schoolapp.entity.auth.Jwt;
 import friasoft.gn.schoolapp.entity.auth.RefreshToken;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.School;
+import friasoft.gn.schoolapp.entity.tenant.Tenant;
 import friasoft.gn.schoolapp.repository.IActivationRepository;
 import friasoft.gn.schoolapp.repository.IJwtRepository;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
@@ -67,6 +69,7 @@ public class JwtService {
         if (!user.isActive()) {
             throw new AccountDisabledException();
         }
+        assertUserOrganizationTenantActive(user);
         if (fromLogin) {
             user.setLastLoginAt(Instant.now());
             userService.saveUser(user);
@@ -86,6 +89,7 @@ public class JwtService {
         }
         School school = schoolRepository.findById(schoolId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "École introuvable."));
+        assertTenantActive(school.getTenantId());
         assertSchoolAffiliationActiveForSwitch(user, school);
         if (!schoolSecurity.canAccessSchool(user, school)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Établissement non accessible pour ce compte.");
@@ -105,6 +109,7 @@ public class JwtService {
         User user = userService.loadUserByUsername(username);
         School school = schoolRepository.findById(schoolId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "École introuvable."));
+        assertTenantActive(school.getTenantId());
         assertSchoolAffiliationActiveForSwitch(user, school);
         if (!schoolSecurity.canAccessSchool(user, school)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Établissement non accessible pour ce compte.");
@@ -456,6 +461,7 @@ public class JwtService {
         if (!user.isActive()) {
             throw new AccountDisabledException();
         }
+        assertUserOrganizationTenantActive(user);
         Long activeSchoolId = jwt.getActiveSchoolId();
         this.disableTokens(user);
 
@@ -463,16 +469,44 @@ public class JwtService {
             if (activeSchoolId != null) {
                 School school = schoolRepository.findById(activeSchoolId).orElse(null);
                 if (school != null && schoolSecurity.canAccessSchool(user, school)) {
+                    assertTenantActive(school.getTenantId());
                     List<GrantedAuthority> authorities = resolveAuthoritiesForSchool(user, activeSchoolId);
                     return issueFullTokenPair(user, activeSchoolId, authorities, user.getLastLoginAt());
                 }
             }
+        } catch (TenantDisabledException ex) {
+            throw ex;
         } catch (ResponseStatusException ex) {
             log.debug("Refresh : contexte école {} invalide, repli login : {}", activeSchoolId, ex.getReason());
         }
 
         SessionContext ctx = resolveSessionContextForLogin(userService.loadUserByUsername(user.getEmail()));
         return issueFullTokenPair(user, ctx.activeSchoolId(), ctx.jwtAuthorities(), user.getLastLoginAt());
+    }
+
+    /**
+     * Super-admin plateforme : pas de tenant métier. Sinon refuse si l’organisation rattachée est inactive.
+     */
+    private void assertUserOrganizationTenantActive(User user) {
+        UserPlatformRole platform = userPlatformRoleRepository.findByUser_Id(user.getId()).orElse(null);
+        if (platform != null && platform.getRole() == User.UserRole.SUPER_ADMIN) {
+            return;
+        }
+        Long tenantId = user.getOrganizationTenantId();
+        if (tenantId == null) {
+            tenantId = user.getTenantId();
+        }
+        assertTenantActive(tenantId);
+    }
+
+    private void assertTenantActive(Long tenantId) {
+        if (tenantId == null) {
+            return;
+        }
+        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
+        if (tenant != null && !tenant.isActive()) {
+            throw new TenantDisabledException();
+        }
     }
 
     /**
