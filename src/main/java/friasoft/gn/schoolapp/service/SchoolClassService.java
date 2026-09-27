@@ -2,6 +2,7 @@ package friasoft.gn.schoolapp.service;
 
 import friasoft.gn.schoolapp.dto.SchoolClassDtos.UpdateSchoolClassRequest;
 import friasoft.gn.schoolapp.dto.response.SchoolClassOverviewResponse;
+import friasoft.gn.schoolapp.entity.school.AcademicStream;
 import friasoft.gn.schoolapp.entity.school.ClassLevel;
 import friasoft.gn.schoolapp.entity.school.ClassLevelGroup;
 import friasoft.gn.schoolapp.entity.school.PeriodType;
@@ -27,6 +28,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SchoolClassService {
+
+    private static final String LYC_GROUP_CODE = "LYC";
 
     private final ISchoolClassRepository repository;
     private final ISchoolYearRepository schoolYearRepository;
@@ -61,7 +64,10 @@ public class SchoolClassService {
         }
         schoolClass.setTenantId(tenantId);
         schoolClass.setYear(year);
-        schoolClass.setLevel(classLevelRepository.getReferenceById(schoolClass.getLevel().getId()));
+        ClassLevel level = classLevelRepository.findByIdWithGroup(schoolClass.getLevel().getId())
+            .orElseThrow(() -> new IllegalArgumentException("Niveau introuvable."));
+        schoolClass.setLevel(level);
+        schoolClass.setStream(normalizeStreamForLevel(level, schoolClass.getStream()));
         if (schoolClass.getCapacity() == null || schoolClass.getCapacity() < 1) {
             schoolClass.setCapacity(40);
         }
@@ -103,7 +109,7 @@ public class SchoolClassService {
             .orElseThrow(() -> new IllegalArgumentException("Classe introuvable."));
         schoolService.assertCurrentUserCanAccessSchool(sc.getYear().getSchool().getId());
 
-        ClassLevel level = classLevelRepository.findById(request.levelId())
+        ClassLevel level = classLevelRepository.findByIdWithGroup(request.levelId())
             .orElseThrow(() -> new IllegalArgumentException("Niveau introuvable."));
 
         long enrolled = studentRepository.countBySchoolClass_Id(classId);
@@ -121,9 +127,11 @@ public class SchoolClassService {
             );
         }
 
+        AcademicStream stream = parseStreamInput(request.stream());
         sc.setName(name);
         sc.setLevel(level);
         sc.setCapacity(capacity);
+        sc.setStream(normalizeStreamForLevel(level, stream));
         return repository.save(sc);
     }
 
@@ -237,11 +245,13 @@ public class SchoolClassService {
         }
         Integer cap = sc.getCapacity() != null ? sc.getCapacity() : 40;
         PeriodType pt = sc.getPeriodType() != null ? sc.getPeriodType() : PeriodType.TRIMESTER;
+        String stream = sc.getStream() != null ? sc.getStream().name() : null;
         return new SchoolClassOverviewResponse(
             sc.getId(),
             sc.getName(),
             cap,
             pt,
+            stream,
             yearRef,
             levelRef,
             enrolled,
@@ -266,5 +276,35 @@ public class SchoolClassService {
             );
         }
         repository.delete(sc);
+    }
+
+    static AcademicStream parseStreamInput(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return AcademicStream.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Filière invalide (attendu SE, SM ou SS).", e);
+        }
+    }
+
+    static AcademicStream normalizeStreamForLevel(ClassLevel level, AcademicStream stream) {
+        String groupCode = level.getGroup() != null ? level.getGroup().getCode() : null;
+        boolean lyc = LYC_GROUP_CODE.equalsIgnoreCase(groupCode);
+        if (lyc) {
+            if (stream == null) {
+                throw new IllegalArgumentException(
+                    "La filière (SE, SM ou SS) est obligatoire pour une classe de lycée."
+                );
+            }
+            return stream;
+        }
+        if (stream != null) {
+            throw new IllegalArgumentException(
+                "La filière ne s’applique qu’aux classes de lycée."
+            );
+        }
+        return null;
     }
 }

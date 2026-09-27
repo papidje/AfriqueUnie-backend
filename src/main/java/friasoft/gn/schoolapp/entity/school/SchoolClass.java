@@ -58,6 +58,14 @@ public class SchoolClass implements TenantAware {
     @Column(nullable = false)
     private Integer capacity = 40;
 
+    /**
+     * Filière lycée ({@link AcademicStream}). Obligatoire si le niveau est du groupe {@code LYC} ;
+     * doit rester {@code null} sinon.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stream", length = 10)
+    private AcademicStream stream;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

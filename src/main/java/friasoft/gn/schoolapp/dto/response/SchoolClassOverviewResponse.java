@@ -12,6 +12,8 @@ public record SchoolClassOverviewResponse(
     String name,
     Integer capacity,
     PeriodType periodType,
+    /** Filière lycée : SE, SM, SS ; null hors lycée. */
+    String stream,
     SchoolYearRef year,
     ClassLevelRef level,
     long enrolledStudentCount,

@@ -13,21 +13,61 @@ import java.util.Optional;
 public interface ISubjectRepository extends JpaRepository<Subject, Long> {
 
     @Query(
-        "select s from Subject s where s.school is null or s.school.id = :schoolId order by s.name asc"
+        """
+        select distinct s from Subject s
+        left join fetch s.levelGroups
+        where s.school is null or s.school.id = :schoolId
+        order by s.name asc
+        """
     )
     List<Subject> findCatalogForSchool(@Param("schoolId") Long schoolId);
 
     @Query(
-        "select s from Subject s where s.id = :id and (s.school is null or s.school.id = :schoolId)"
+        """
+        select distinct s from Subject s
+        where (s.school is null or s.school.id = :schoolId)
+          and s.id in (
+            select s2.id from Subject s2 join s2.levelGroups g where g.id = :levelGroupId
+          )
+        order by s.name asc
+        """
+    )
+    List<Subject> findCatalogForSchoolAndLevelGroup(
+        @Param("schoolId") Long schoolId,
+        @Param("levelGroupId") Long levelGroupId
+    );
+
+    @Query(
+        """
+        select s from Subject s
+        left join fetch s.levelGroups
+        where s.id = :id and (s.school is null or s.school.id = :schoolId)
+        """
     )
     Optional<Subject> findByIdInSchoolCatalog(@Param("id") Long id, @Param("schoolId") Long schoolId);
+
+    @Query(
+        """
+        select s from Subject s
+        left join fetch s.levelGroups
+        where s.id = :id
+        """
+    )
+    Optional<Subject> findByIdWithLevelGroups(@Param("id") Long id);
 
     @Query(
         "select s from Subject s where lower(s.code) = lower(:code) and (s.school is null or s.school.id = :schoolId)"
     )
     List<Subject> findByCodeInCatalogScope(@Param("code") String code, @Param("schoolId") Long schoolId);
 
-    @Query("select s from Subject s where s.school is null order by s.name asc")
+    @Query(
+        """
+        select distinct s from Subject s
+        left join fetch s.levelGroups
+        where s.school is null
+        order by s.name asc
+        """
+    )
     List<Subject> findGlobalSubjects();
 
     @Query(

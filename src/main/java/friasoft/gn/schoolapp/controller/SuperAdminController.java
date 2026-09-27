@@ -2,6 +2,12 @@ package friasoft.gn.schoolapp.controller;
 
 import friasoft.gn.schoolapp.dto.CityDtos.CityRequest;
 import friasoft.gn.schoolapp.dto.CityDtos.CityResponse;
+import friasoft.gn.schoolapp.dto.SubjectAdditionRequestDtos.AcceptRequest;
+import friasoft.gn.schoolapp.dto.SubjectAdditionRequestDtos.AddCommentRequest;
+import friasoft.gn.schoolapp.dto.SubjectAdditionRequestDtos.CommentResponse;
+import friasoft.gn.schoolapp.dto.SubjectAdditionRequestDtos.RefuseRequest;
+import friasoft.gn.schoolapp.dto.SubjectAdditionRequestDtos.RequestDetail;
+import friasoft.gn.schoolapp.dto.SubjectAdditionRequestDtos.RequestSummary;
 import friasoft.gn.schoolapp.dto.request.TenantActiveUpdateRequest;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolRowDto;
@@ -10,6 +16,7 @@ import friasoft.gn.schoolapp.entity.school.Region;
 import friasoft.gn.schoolapp.entity.school.Subject;
 import friasoft.gn.schoolapp.service.CityService;
 import friasoft.gn.schoolapp.service.RegionService;
+import friasoft.gn.schoolapp.service.SubjectAdditionRequestService;
 import friasoft.gn.schoolapp.service.SubjectService;
 import friasoft.gn.schoolapp.service.SuperAdminService;
 import lombok.AllArgsConstructor;
@@ -31,6 +38,7 @@ public class SuperAdminController {
     private final CityService cityService;
     private final RegionService regionService;
     private final SubjectService subjectService;
+    private final SubjectAdditionRequestService subjectAdditionRequestService;
 
     @GetMapping("/tenants")
     public List<SuperAdminTenantRowDto> listTenantsWithSchools() {
@@ -166,6 +174,62 @@ public class SuperAdminController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
+    }
+
+    // —— Demandes d’ajout de matière ——
+
+    @GetMapping("/subject-addition-requests")
+    public List<RequestSummary> listSubjectAdditionRequests(
+        @RequestParam(required = false, defaultValue = "OPEN") String status
+    ) {
+        try {
+            return subjectAdditionRequestService.listForSuperAdmin(status);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/subject-addition-requests/{id}")
+    public RequestDetail getSubjectAdditionRequest(@PathVariable Long id) {
+        return subjectAdditionRequestService.getDetail(id);
+    }
+
+    @PostMapping("/subject-addition-requests/{id}/comments")
+    public CommentResponse commentSubjectAdditionRequest(
+        @PathVariable Long id,
+        @RequestBody AddCommentRequest body
+    ) {
+        try {
+            return subjectAdditionRequestService.addComment(id, body);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/subject-addition-requests/{id}/accept")
+    public RequestDetail acceptSubjectAdditionRequest(
+        @PathVariable Long id,
+        @RequestBody AcceptRequest body
+    ) {
+        try {
+            return subjectAdditionRequestService.accept(id, body);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
+    }
+
+    @PostMapping("/subject-addition-requests/{id}/refuse")
+    public RequestDetail refuseSubjectAdditionRequest(
+        @PathVariable Long id,
+        @RequestBody(required = false) RefuseRequest body
+    ) {
+        try {
+            return subjectAdditionRequestService.refuse(id, body);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 }

@@ -10,6 +10,8 @@ public final class SchoolClassDtos {
     public record UpdateSchoolClassRequest(
         String name,
         Long levelId,
-        Integer capacity
+        Integer capacity,
+        /** Filière lycée (SE/SM/SS) ; obligatoire si niveau LYC, null sinon. */
+        String stream
     ) {}
 }

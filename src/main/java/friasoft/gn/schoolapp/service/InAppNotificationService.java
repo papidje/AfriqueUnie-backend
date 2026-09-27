@@ -65,14 +65,27 @@ public class InAppNotificationService {
      */
     @Transactional
     public void createUserTargetedNotification(User targetUser, School school, String title, String content) {
+        createUserTargetedNotification(targetUser, school, title, content, null);
+    }
+
+    /**
+     * Message personnel ; {@code linkId} optionnel (ex. id de demande matière).
+     */
+    @Transactional
+    public void createUserTargetedNotification(
+        User targetUser,
+        School school,
+        String title,
+        String content,
+        Long linkId
+    ) {
         NotificationEntity n = new NotificationEntity();
         n.setTitle(title);
         n.setContent(content);
         n.setType(NotificationType.USER_TARGETED);
         n.setCreatedAt(LocalDateTime.now());
-        n.setLinkId(null);
+        n.setLinkId(linkId);
         n.setTargetUser(targetUser);
-        /* Pas de targetSchool : sinon la JPQL diffuse aux autres actifs de l’établissement (ex. l’admin qui suspend). */
         n.setTargetSchool(null);
         notificationRepository.save(n);
     }

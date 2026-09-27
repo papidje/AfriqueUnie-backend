@@ -68,6 +68,7 @@ public class ClassSubjectService {
         Subject subject = subjectRepository.findById(request.subjectId())
             .orElseThrow(() -> new IllegalArgumentException("Matière introuvable."));
         subjectService.assertSubjectAssignableToSchool(subject, clazz.getYear().getSchool().getId());
+        subjectService.assertSubjectCompatibleWithClassLevelGroup(subject, clazz);
         if (classSubjectRepository.findBySchoolClass_IdAndSubject_Id(classId, subject.getId()).isPresent()) {
             throw new IllegalArgumentException("Cette matière est déjà affectée à la classe.");
         }

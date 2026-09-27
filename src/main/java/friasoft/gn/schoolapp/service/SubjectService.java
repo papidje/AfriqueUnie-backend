@@ -1,8 +1,12 @@
 package friasoft.gn.schoolapp.service;
 
+import friasoft.gn.schoolapp.entity.school.ClassLevelGroup;
 import friasoft.gn.schoolapp.entity.school.School;
+import friasoft.gn.schoolapp.entity.school.SchoolClass;
 import friasoft.gn.schoolapp.entity.school.Subject;
+import friasoft.gn.schoolapp.repository.IClassLevelGroupRepository;
 import friasoft.gn.schoolapp.repository.IClassSubjectRepository;
+import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
 import friasoft.gn.schoolapp.repository.ISubjectRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -11,8 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @AllArgsConstructor
@@ -21,11 +27,28 @@ public class SubjectService {
     private final ISubjectRepository repository;
     private final SchoolService schoolService;
     private final IClassSubjectRepository classSubjectRepository;
+    private final ISchoolClassRepository schoolClassRepository;
+    private final IClassLevelGroupRepository classLevelGroupRepository;
 
     @Transactional(readOnly = true)
     public List<Subject> findCatalogForSchool(Long schoolId) {
         schoolService.assertCurrentUserCanAccessSchool(schoolId);
         return repository.findCatalogForSchool(schoolId);
+    }
+
+    /**
+     * Catalogue visible pour l’école et compatible avec le groupe de cycle de la classe.
+     */
+    @Transactional(readOnly = true)
+    public List<Subject> findCatalogAssignableToClass(Long classId) {
+        SchoolClass clazz = schoolClassRepository.findByIdWithYearAndSchool(classId)
+            .orElseThrow(() -> new IllegalArgumentException("Classe introuvable."));
+        Long schoolId = clazz.getYear().getSchool().getId();
+        schoolService.assertCurrentUserCanAccessSchool(schoolId);
+        if (clazz.getLevel() == null || clazz.getLevel().getGroup() == null) {
+            throw new IllegalArgumentException("Niveau de classe incomplet.");
+        }
+        return repository.findCatalogForSchoolAndLevelGroup(schoolId, clazz.getLevel().getGroup().getId());
     }
 
     @Transactional(readOnly = true)
@@ -36,18 +59,10 @@ public class SubjectService {
 
     @Transactional
     public Subject createForSchool(Long schoolId, Subject input) {
-        schoolService.assertCurrentUserCanAccessSchool(schoolId);
-        School school = schoolService.getSchool(schoolId);
-        trimFields(input);
-        validateRequired(input);
-        input.setId(null);
-        input.setSchool(school);
-        assertCodeUniqueInCatalogScope(input.getCode(), schoolId, null);
-        try {
-            return repository.save(input);
-        } catch (DataIntegrityViolationException e) {
-            throw new IllegalArgumentException("Code matière déjà utilisé pour cette portée.", e);
-        }
+        throw new IllegalArgumentException(
+            "La création libre de matières par établissement est désactivée. "
+                + "Utilisez une demande d’ajout au référentiel (« Nouvelle matière »)."
+        );
     }
 
     @Transactional
@@ -58,16 +73,9 @@ public class SubjectService {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Matière introuvable pour cet établissement.")
             );
         assertSchoolSpecificSubjectForMutation(existing, false);
-        trimFields(input);
-        validateRequired(input);
-        assertCodeUniqueInCatalogScope(input.getCode(), schoolId, id);
-        existing.setCode(input.getCode());
-        existing.setName(input.getName());
-        try {
-            return repository.save(existing);
-        } catch (DataIntegrityViolationException e) {
-            throw new IllegalArgumentException("Code matière déjà utilisé pour cette portée.", e);
-        }
+        throw new IllegalArgumentException(
+            "Les matières locales ne sont plus modifiables. Demandez l’ajout au référentiel commun si besoin."
+        );
     }
 
     @Transactional
@@ -109,6 +117,30 @@ public class SubjectService {
         }
     }
 
+    /**
+     * Vérifie que la matière est autorisée pour le groupe de cycle de la classe.
+     */
+    public void assertSubjectCompatibleWithClassLevelGroup(Subject subject, SchoolClass clazz) {
+        if (clazz.getLevel() == null || clazz.getLevel().getGroup() == null) {
+            throw new IllegalArgumentException("Niveau de classe incomplet.");
+        }
+        ClassLevelGroup group = clazz.getLevel().getGroup();
+        Subject loaded = repository.findByIdWithLevelGroups(subject.getId()).orElse(subject);
+        Set<ClassLevelGroup> allowed = loaded.getLevelGroups();
+        if (allowed == null || allowed.isEmpty()) {
+            throw new IllegalArgumentException(
+                "Cette matière n’est rattachée à aucun cycle scolaire et ne peut pas être affectée."
+            );
+        }
+        boolean ok = allowed.stream().anyMatch(g -> g.getId() != null && g.getId().equals(group.getId()));
+        if (!ok) {
+            throw new IllegalArgumentException(
+                "La matière « " + subject.getName() + " » n’est pas enseignée au cycle « "
+                    + group.getName() + " »."
+            );
+        }
+    }
+
     private void assertCodeUniqueInCatalogScope(String code, Long schoolId, Long excludeId) {
         List<Subject> found = repository.findByCodeInCatalogScope(code, schoolId);
         for (Subject s : found) {
@@ -145,6 +177,14 @@ public class SubjectService {
 
     @Transactional
     public Subject createGlobal(String codeRaw, String nameRaw) {
+        return createGlobal(codeRaw, nameRaw, null);
+    }
+
+    /**
+     * @param levelGroupCodes si null ou vide → tous les cycles ; sinon uniquement ces codes.
+     */
+    @Transactional
+    public Subject createGlobal(String codeRaw, String nameRaw, List<String> levelGroupCodes) {
         Subject input = new Subject();
         input.setCode(codeRaw);
         input.setName(nameRaw);
@@ -155,6 +195,25 @@ public class SubjectService {
         }
         input.setId(null);
         input.setSchool(null);
+        Set<ClassLevelGroup> groups;
+        if (levelGroupCodes == null || levelGroupCodes.isEmpty()) {
+            groups = new HashSet<>(classLevelGroupRepository.findAll());
+        } else {
+            groups = new HashSet<>();
+            for (String raw : levelGroupCodes) {
+                if (raw == null || raw.isBlank()) {
+                    continue;
+                }
+                String code = raw.trim().toUpperCase();
+                ClassLevelGroup g = classLevelGroupRepository.findByCode(code)
+                    .orElseThrow(() -> new IllegalArgumentException("Groupe de niveau inconnu : " + code));
+                groups.add(g);
+            }
+            if (groups.isEmpty()) {
+                throw new IllegalArgumentException("Au moins un cycle scolaire est obligatoire.");
+            }
+        }
+        input.replaceLevelGroups(groups);
         try {
             return repository.save(input);
         } catch (DataIntegrityViolationException e) {

@@ -23,7 +23,17 @@ public class SubjectController {
 
     @PreAuthorize(READ)
     @GetMapping
-    public List<Subject> list(@RequestParam Long schoolId) {
+    public List<Subject> list(
+        @RequestParam Long schoolId,
+        @RequestParam(required = false) Long classId
+    ) {
+        if (classId != null) {
+            try {
+                return service.findCatalogAssignableToClass(classId);
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+            }
+        }
         return service.findCatalogForSchool(schoolId);
     }
 
