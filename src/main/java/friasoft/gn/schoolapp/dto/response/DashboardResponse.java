@@ -1,7 +1,6 @@
 package friasoft.gn.schoolapp.dto.response;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
 public record DashboardResponse(
@@ -11,18 +10,28 @@ public record DashboardResponse(
     long totalCapacity,
     /** Nombre de classes (année active). */
     long classesCount,
-    /** Affectations matière–classe (année active). */
-    long taughtSubjectsCount,
-    BigDecimal monthlyTuitionCollected,
     /** Paiements rattachés aux comptes de l’année active. */
     BigDecimal schoolYearTuitionCollected,
-    List<RecentEnrollmentResponse> recentEnrollments
+    /** Remplissage par classe (inscrits vs capacité). */
+    List<ClassFillItem> classFill,
+    /** Paiements à jour vs en retard par classe (dû à date du jour). */
+    List<ClassPaymentStatusItem> classPaymentStatus
 ) {
-    public record RecentEnrollmentResponse(
-        Long id,
-        String fullName,
+    public record ClassFillItem(
+        Long classId,
         String className,
-        LocalDate enrolledAt
+        String levelCode,
+        long enrolled,
+        long capacity
+    ) {
+    }
+
+    public record ClassPaymentStatusItem(
+        Long classId,
+        String className,
+        String levelCode,
+        long upToDateCount,
+        long lateCount
     ) {
     }
 }

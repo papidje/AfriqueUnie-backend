@@ -48,6 +48,8 @@ public final class GradingDtos {
         long studentId,
         String lastName,
         String firstName,
+        /** {@code MONSIEUR} / {@code MADAME}. */
+        String civility,
         List<Double> averages,
         Double generalAverage
     ) {

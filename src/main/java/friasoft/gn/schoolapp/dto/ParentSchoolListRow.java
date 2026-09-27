@@ -10,5 +10,9 @@ public record ParentSchoolListRow(
     String firstName,
     String phone,
     String email,
-    Long enrolledChildrenCount
+    Long enrolledChildrenCount,
+    /** Nombre d’enfants où ce parent est le père (année active). */
+    Long asFatherCount,
+    /** Nombre d’enfants où ce parent est la mère (année active). */
+    Long asMotherCount
 ) {}

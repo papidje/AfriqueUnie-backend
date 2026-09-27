@@ -14,6 +14,8 @@ public record RegistrationRequest(
     String schoolAddress,
     String tenantLogo,
     /** Téléphone de l’établissement → {@link friasoft.gn.schoolapp.entity.school.School#setContact}. */
-    String schoolContact
+    String schoolContact,
+    /** Ville obligatoire (référentiel {@code cities}). */
+    Long cityId
 ) {
 }

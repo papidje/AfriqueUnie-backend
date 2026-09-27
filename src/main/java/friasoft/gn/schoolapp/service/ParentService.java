@@ -119,7 +119,8 @@ public class ParentService {
             s.getMatricule(),
             className,
             status,
-            relation
+            relation,
+            s.getCivility() != null ? s.getCivility().name() : null
         );
     }
 

@@ -2,6 +2,10 @@ package friasoft.gn.schoolapp.service.finance;
 
 import friasoft.gn.schoolapp.entity.school.FeeStructure;
 
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.YearMonth;
+
 /**
  * Dûs de scolarité Oct→Juin (9 mois) à partir du barème.
  * <ul>
@@ -16,6 +20,48 @@ public final class TuitionMonthDues {
     public static final int MONTH_COUNT = 9;
 
     private TuitionMonthDues() {}
+
+    /**
+     * Premier mois de scolarité (octobre) de l’année scolaire : octobre de l’année civile
+     * de {@code schoolYearStart} (ex. démarrage sept. 2026 → oct. 2026).
+     */
+    public static YearMonth firstTuitionMonth(LocalDate schoolYearStart) {
+        if (schoolYearStart == null) {
+            return YearMonth.now().withMonth(Month.OCTOBER.getValue());
+        }
+        return YearMonth.of(schoolYearStart.getYear(), Month.OCTOBER);
+    }
+
+    /**
+     * Nombre de mois Oct→Juin déjà échus à la date {@code asOf} (0 à {@link #MONTH_COUNT}).
+     */
+    public static int dueMonthCountAsOf(LocalDate schoolYearStart, LocalDate asOf) {
+        if (asOf == null) {
+            asOf = LocalDate.now();
+        }
+        YearMonth first = firstTuitionMonth(schoolYearStart);
+        YearMonth current = YearMonth.from(asOf);
+        if (current.isBefore(first)) {
+            return 0;
+        }
+        long months = first.until(current, java.time.temporal.ChronoUnit.MONTHS) + 1;
+        return (int) Math.max(0, Math.min(MONTH_COUNT, months));
+    }
+
+    /**
+     * Somme des dus des mois déjà échus (index 0 = octobre …).
+     */
+    public static double sumDueAsOf(double[] dues, LocalDate schoolYearStart, LocalDate asOf) {
+        int n = dueMonthCountAsOf(schoolYearStart, asOf);
+        if (dues == null || n <= 0) {
+            return 0d;
+        }
+        double s = 0d;
+        for (int i = 0; i < n && i < dues.length; i++) {
+            s += Math.max(0d, dues[i]);
+        }
+        return s;
+    }
 
     /**
      * Montants dus par mois (index 0 = octobre … 8 = juin), barème sans réduction.

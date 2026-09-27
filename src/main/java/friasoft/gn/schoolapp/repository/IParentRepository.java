@@ -14,7 +14,9 @@ public interface IParentRepository extends JpaRepository<Parent, Long> {
 
     @Query("""
         select new friasoft.gn.schoolapp.dto.ParentSchoolListRow(
-            p.id, p.lastName, p.firstName, p.phone, p.email, count(distinct s.id)
+            p.id, p.lastName, p.firstName, p.phone, p.email, count(distinct s.id),
+            sum(case when s.father = p then 1L else 0L end),
+            sum(case when s.mother = p then 1L else 0L end)
         )
         from Student s
         join s.schoolClass sc

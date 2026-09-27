@@ -59,6 +59,8 @@ public class ConfigurationSecurityApplication {
                     .requestMatchers(HttpMethod.POST, "/auth/switch-school").authenticated()
                     // Auth endpoints (login, refresh, etc.)
                     .requestMatchers("/auth/**").permitAll()
+                    // Référentiel villes actives (inscription école publique)
+                    .requestMatchers(HttpMethod.GET, "/api/cities").permitAll()
                     // Fichiers publics (logos, photos) — requis pour <img src="…/api/rest/uploads/…"> sans en-tête Authorization
                     .requestMatchers("/uploads/**").permitAll()
                     /*

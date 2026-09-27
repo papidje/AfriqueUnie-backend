@@ -93,6 +93,7 @@ public class GradingSnapshotReadService {
                     st.getId(),
                     st.getLastName() != null ? st.getLastName() : "",
                     st.getFirstName() != null ? st.getFirstName() : "",
+                    st.getCivility() != null ? st.getCivility().name() : null,
                     averages,
                     s.getPeriodGeneralAverage()
                 )

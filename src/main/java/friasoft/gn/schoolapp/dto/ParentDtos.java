@@ -23,7 +23,9 @@ public final class ParentDtos {
         String className,
         String enrollmentStatus,
         /** {@code PERE}, {@code MERE} ou {@code PERE_ET_MERE}. */
-        String relation
+        String relation,
+        /** {@code MONSIEUR} / {@code MADAME}. */
+        String civility
     ) {}
 
     public record ParentResponse(

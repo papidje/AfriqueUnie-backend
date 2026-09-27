@@ -2,6 +2,7 @@ package friasoft.gn.schoolapp.service;
 
 import friasoft.gn.schoolapp.dto.RegistrationRequest;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.entity.school.City;
 import friasoft.gn.schoolapp.entity.school.School;
 import friasoft.gn.schoolapp.entity.tenant.Tenant;
 import friasoft.gn.schoolapp.entity.auth.UserPlatformRole;
@@ -24,6 +25,7 @@ public class RegistrationService {
     private final UserRepository userRepository;
     private final UserPlatformRoleRepository userPlatformRoleRepository;
     private final UserService userService;
+    private final CityService cityService;
     private final BCryptPasswordEncoder passwordEncoder;
 
     @Transactional
@@ -32,6 +34,13 @@ public class RegistrationService {
         userRepository.findByEmail(request.email()).ifPresent(u -> {
             throw new RuntimeException("Email deja utilisé");
         });
+
+        City city;
+        try {
+            city = cityService.requireActiveCity(request.cityId());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException(e.getMessage());
+        }
 
         String fn = trimToNull(request.adminFirstName());
         String ln = trimToNull(request.adminLastName());
@@ -50,6 +59,7 @@ public class RegistrationService {
         school.setName(resolvedSchoolName);
         school.setAdress(schoolAddressNorm);
         school.setContact(normalizeBlankToNull(request.schoolContact()));
+        school.setCity(city);
         school.setLogo(request.tenantLogo());
         school.setActive(false);
         school.setCreated_at(Instant.now());
@@ -95,6 +105,9 @@ public class RegistrationService {
         }
         if (request.schoolContact() == null || request.schoolContact().isBlank()) {
             throw new RuntimeException("Téléphone obligatoire");
+        }
+        if (request.cityId() == null) {
+            throw new RuntimeException("La ville est obligatoire");
         }
         if (trimToNull(request.adminFirstName()) == null) {
             throw new RuntimeException("Prénom de l'administrateur obligatoire");

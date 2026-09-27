@@ -8,6 +8,8 @@ public record StudentPaymentStatusDTO(
     String firstName,
     String matricule,
     String phone,
+    /** {@code MONSIEUR} / {@code MADAME} — icône genre côté liste Finance. */
+    String civility,
     String insReinsLabel,
     Double insReinsPaid,
     Double insReinsExpected,

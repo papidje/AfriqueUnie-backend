@@ -25,6 +25,7 @@ public class StudentMapper {
         if (student.getEnrollmentStatus() != null) {
             studentResponse.setEnrollmentStatus(student.getEnrollmentStatus().name());
         }
+        studentResponse.setCommunicationPhone(student.getCommunicationPhone());
         return studentResponse;
     }
 

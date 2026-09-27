@@ -19,4 +19,6 @@ public class StudentResponse {
     private LocalDate birthDate;
     private String matricule;
     private String enrollmentStatus;
+    /** Téléphone de communication (liste élèves). */
+    private String communicationPhone;
 }

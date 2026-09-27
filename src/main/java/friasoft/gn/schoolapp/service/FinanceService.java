@@ -846,6 +846,7 @@ public class FinanceService {
             student.getFirstName(),
             student.getMatricule(),
             resolvePhone(student),
+            student.getCivility() != null ? student.getCivility().name() : null,
             insReinsLabel,
             insReinsPaid,
             insReinsExpected,

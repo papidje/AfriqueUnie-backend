@@ -193,6 +193,7 @@ public class GradingService {
                     s.getId(),
                     s.getLastName() != null ? s.getLastName() : "",
                     s.getFirstName() != null ? s.getFirstName() : "",
+                    s.getCivility() != null ? s.getCivility().name() : null,
                     averages,
                     generalAverageFromColumns(averages, classSubjects)
                 )
