@@ -5,7 +5,9 @@ import friasoft.gn.schoolapp.entity.auth.Activation;
 import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.service.communication.CommunicationMailDispatchService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.HtmlUtils;
 
 @Slf4j
@@ -74,7 +76,8 @@ public class NotificationService {
                     ACTIVATION_CODE_VALIDITY_MINUTES,
                     AppFrontendLinks.htmlAnchor(resetUrl, resetUrl)
                 );
-        sendHtmlBestEffort(email, subject, html, "réinitialisation");
+        // Échec SMTP visible côté API : l'utilisateur ne doit pas croire qu'un mail a été envoyé.
+        sendHtmlRequired(email, subject, html, "réinitialisation");
     }
 
     public void sendAccountActivatedMail(User user) {
@@ -158,6 +161,25 @@ public class NotificationService {
             log.info("Mail {} envoyé à {}", kind, to);
         } catch (Exception ex) {
             log.warn("Échec envoi mail {} à {} : {}", kind, to, ex.getMessage());
+        }
+    }
+
+    private void sendHtmlRequired(String to, String subject, String html, String kind) {
+        if (to == null || to.isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Impossible d'envoyer l'e-mail : destinataire manquant."
+            );
+        }
+        try {
+            mailDispatchService.sendHtml(to.trim(), subject, html);
+            log.info("Mail {} envoyé à {}", kind, to);
+        } catch (Exception ex) {
+            log.error("Échec envoi mail {} à {} : {}", kind, to, ex.getMessage());
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Impossible d'envoyer l'e-mail de réinitialisation. Réessayez plus tard ou contactez l'administration."
+            );
         }
     }
 

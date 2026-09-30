@@ -728,25 +728,62 @@ public class UserService implements UserDetailsService{
 
     @Transactional
     public void resetPassword(Map<String, String> request) {
-        User user = this.loadUserByUsername(request.get("email"));
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Requête invalide.");
+        }
+        String email = request.get("email");
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail obligatoire.");
+        }
+        User user = this.userRepository.findByEmail(email.trim())
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Aucun compte n'est associé à cette adresse e-mail."
+            ));
         Activation activation = createActivation(user);
         this.notificationService.sendResetPassWordMail(activation);
     }
 
     @Transactional
     public void updatePassword(Map<String, String> request) {
-        Activation savedActivation = this.iActivationRepository.findByCode(request.get("code"))
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Code d'activation invalide."));
-        User user = this.userRepository.findByEmail(request.get("email"))
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Requête invalide.");
+        }
+        String email = request.get("email");
+        String code = request.get("code");
+        String password = request.get("password");
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail obligatoire.");
+        }
+        if (code == null || code.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Code de vérification obligatoire.");
+        }
+        if (password == null || password.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nouveau mot de passe obligatoire.");
+        }
+        if (password.length() < 6) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Le mot de passe doit contenir au moins 6 caractères."
+            );
+        }
+
+        Activation savedActivation = this.iActivationRepository.findByCode(code.trim())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Code de vérification invalide."));
+        User user = this.userRepository.findByEmail(email.trim())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable."));
         if (Instant.now().isBefore(savedActivation.getExpiration())
             && savedActivation.getUser().getEmail().equals(user.getEmail())) {
-            user.setPassword(this.passwordEncoder.encode(request.get("password")));
+            user.setPassword(this.passwordEncoder.encode(password));
+            // Preuve de possession de l'e-mail : un compte encore inactif peut se connecter après reset.
+            if (!user.isActive()) {
+                user.setActive(true);
+            }
             this.userRepository.save(user);
             this.iActivationRepository.delete(savedActivation);
             this.notificationService.sendPasswordChangedConfirmationMail(user);
         } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Activation expirée ou non valide.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Code expiré ou non valide.");
         }
     }
 
