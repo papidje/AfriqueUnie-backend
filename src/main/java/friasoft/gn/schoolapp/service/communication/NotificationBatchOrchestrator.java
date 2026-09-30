@@ -17,7 +17,7 @@ public class NotificationBatchOrchestrator {
     private final TenantRepository tenantRepository;
     private final NotificationTenantBatchCoordinator notificationTenantBatchCoordinator;
 
-    @Value("${application.communication.scheduled-enabled:true}")
+    @Value("${application.communication.scheduled-enabled:false}")
     private boolean scheduledEnabled;
 
     /**

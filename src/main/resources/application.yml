@@ -81,8 +81,10 @@ logging:
 
 application:
   communication:
-    # Notifications automatiques (multi-tenant). Désactiver en dev si besoin : SCHEDULED_ENABLED=false
-    scheduled-enabled: ${SCHEDULED_ENABLED:true}
+    # Batch quotidien de relances (évaluations, paiements, EDT).
+    # false par défaut pour préserver le quota SMTP : seuls les e-mails d'actions manuelles partent.
+    # Réactiver : SCHEDULED_ENABLED=true
+    scheduled-enabled: ${SCHEDULED_ENABLED:false}
     batch-cron: ${COMMUNICATION_BATCH_CRON:0 20 7 * * *}
   jwt:
     duration: 1
