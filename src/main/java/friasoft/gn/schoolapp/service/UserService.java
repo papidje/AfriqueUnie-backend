@@ -703,27 +703,25 @@ public class UserService implements UserDetailsService{
         if (activation.newPassword() == null || activation.newPassword().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nouveau mot de passe obligatoire.");
         }
-
-        Activation savedActivation = this.iActivationRepository.findByCode(activation.activationCode())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Code d'activation invalide."));
-        User user = this.userRepository.findByEmail(activation.email())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable."));
-        if (user.isActive()) {
+        if (activation.newPassword().length() < 6) {
             throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Ce compte est déjà activé. Connectez-vous avec votre mot de passe habituel. Ignorez tout nouveau code reçu par erreur après une invitation à un établissement."
+                HttpStatus.BAD_REQUEST,
+                "Le mot de passe doit contenir au moins 6 caractères."
             );
         }
-        if (Instant.now().isBefore(savedActivation.getExpiration())
-            && savedActivation.getUser().getEmail().equals(user.getEmail())) {
-            user.setPassword(this.passwordEncoder.encode(activation.newPassword()));
-            user.setActive(true);
-            this.userRepository.save(user);
-            this.iActivationRepository.delete(savedActivation);
-            this.notificationService.sendAccountActivatedMail(user);
-        } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Activation expirée ou non valide.");
+
+        Activation savedActivation = this.iActivationRepository.findByCode(activation.activationCode().trim())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Code d'activation invalide."));
+        User user = this.userRepository.findByEmail(activation.email().trim())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable."));
+
+        // Compte déjà actif : un code vivant dans `activations` ne peut venir que d'un reset MDP
+        // (invitation d'un compte déjà actif n'envoie plus de code). Appliquer le nouveau mot de passe.
+        if (user.isActive()) {
+            applyValidActivationCode(user, savedActivation, activation.newPassword(), false);
+            return;
         }
+        applyValidActivationCode(user, savedActivation, activation.newPassword(), true);
     }
 
     @Transactional
@@ -772,18 +770,41 @@ public class UserService implements UserDetailsService{
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Code de vérification invalide."));
         User user = this.userRepository.findByEmail(email.trim())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable."));
-        if (Instant.now().isBefore(savedActivation.getExpiration())
-            && savedActivation.getUser().getEmail().equals(user.getEmail())) {
-            user.setPassword(this.passwordEncoder.encode(password));
-            // Preuve de possession de l'e-mail : un compte encore inactif peut se connecter après reset.
-            if (!user.isActive()) {
-                user.setActive(true);
-            }
-            this.userRepository.save(user);
-            this.iActivationRepository.delete(savedActivation);
-            this.notificationService.sendPasswordChangedConfirmationMail(user);
-        } else {
+        applyValidActivationCode(user, savedActivation, password, false);
+    }
+
+    /**
+     * Valide le code (non expiré, e-mail concordant), pose le mot de passe, consomme le code.
+     *
+     * @param firstActivation si {@code true}, active le compte et envoie le mail d'activation ;
+     *                        sinon envoie la confirmation de changement de mot de passe
+     *                        (et active aussi un compte encore inactif).
+     */
+    private void applyValidActivationCode(
+        User user,
+        Activation savedActivation,
+        String rawPassword,
+        boolean firstActivation
+    ) {
+        if (savedActivation.getUser() == null
+            || savedActivation.getUser().getEmail() == null
+            || !savedActivation.getUser().getEmail().equalsIgnoreCase(user.getEmail())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Code expiré ou non valide.");
+        }
+        if (!Instant.now().isBefore(savedActivation.getExpiration())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Code expiré ou non valide.");
+        }
+        boolean wasInactive = !user.isActive();
+        user.setPassword(this.passwordEncoder.encode(rawPassword));
+        if (firstActivation || wasInactive) {
+            user.setActive(true);
+        }
+        this.userRepository.save(user);
+        this.iActivationRepository.delete(savedActivation);
+        if (firstActivation || wasInactive) {
+            this.notificationService.sendAccountActivatedMail(user);
+        } else {
+            this.notificationService.sendPasswordChangedConfirmationMail(user);
         }
     }
 

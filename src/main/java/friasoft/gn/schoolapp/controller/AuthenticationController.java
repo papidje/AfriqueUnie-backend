@@ -94,7 +94,7 @@ public class AuthenticationController {
             // (confusion avec « droits ») ; message explicite pour le front.
             throw new ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
-                "Ce compte n'est pas encore activé. Utilisez le lien reçu par e-mail ou la page d'activation."
+                "Ce compte n'est pas encore activé. Utilisez le lien d'activation reçu par e-mail, ou « Mot de passe oublié » si le code a expiré."
             );
         } catch (LockedException e) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ce compte est verrouillé. Contactez l'administration.");

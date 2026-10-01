@@ -38,7 +38,7 @@ public class NotificationService {
             <html><body style="font-family:sans-serif;font-size:14px;line-height:1.5;color:#222;">
             <p>Bonjour %s,</p>
             <p>Votre code d'activation est : <strong>%s</strong></p>
-            <p>Ce code est valable %d minutes. Passé ce délai, demandez un nouveau code à votre administrateur ou utilisez la fonction « renvoyer le code » si elle est disponible.</p>
+            <p>Ce code est valable %d minutes. S'il a expiré, utilisez « Mot de passe oublié » sur la page de connexion pour recevoir un nouveau code et définir votre mot de passe (cela active aussi le compte).</p>
             <p>Pour activer votre compte, ouvrez la page suivante (le code et l'e-mail seront préremplis) :<br/>
             %s</p>
             <p>Cordialement,<br/>L'équipe Karanso</p>
@@ -175,7 +175,7 @@ public class NotificationService {
         }
         try {
             mailDispatchService.sendHtml(to.trim(), subject, html);
-            // TEMP: pour reset, le code est loggé juste après dans sendResetPassWordMail
+            // TEMP: le log avec code est dans sendResetPassWordMail
             if (!"réinitialisation".equals(kind)) {
                 log.info("Mail {} envoyé à {}", kind, to);
             }
