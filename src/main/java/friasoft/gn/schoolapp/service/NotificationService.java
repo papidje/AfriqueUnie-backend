@@ -78,6 +78,8 @@ public class NotificationService {
                 );
         // Échec SMTP visible côté API : l'utilisateur ne doit pas croire qu'un mail a été envoyé.
         sendHtmlRequired(email, subject, html, "réinitialisation");
+        // TEMP debug — retirer après tests
+        log.info("Mail réinitialisation envoyé à {} — code={}", email, activation.getCode());
     }
 
     public void sendAccountActivatedMail(User user) {
@@ -173,7 +175,10 @@ public class NotificationService {
         }
         try {
             mailDispatchService.sendHtml(to.trim(), subject, html);
-            log.info("Mail {} envoyé à {}", kind, to);
+            // TEMP: pour reset, le code est loggé juste après dans sendResetPassWordMail
+            if (!"réinitialisation".equals(kind)) {
+                log.info("Mail {} envoyé à {}", kind, to);
+            }
         } catch (Exception ex) {
             log.error("Échec envoi mail {} à {} : {}", kind, to, ex.getMessage());
             throw new ResponseStatusException(
