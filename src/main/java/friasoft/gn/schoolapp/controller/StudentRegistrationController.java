@@ -23,8 +23,8 @@ public class StudentRegistrationController {
     @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @GetMapping("/family-preview")
     public FamilyPreviewDtos.FamilyPreviewResponse familyPreview(
-        @RequestParam String fatherPhone,
-        @RequestParam String motherPhone
+        @RequestParam(required = false) String fatherPhone,
+        @RequestParam(required = false) String motherPhone
     ) {
         try {
             return registrationService.previewFamily(fatherPhone, motherPhone);
@@ -46,4 +46,3 @@ public class StudentRegistrationController {
         }
     }
 }
-

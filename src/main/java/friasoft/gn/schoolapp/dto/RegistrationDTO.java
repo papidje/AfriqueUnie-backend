@@ -2,8 +2,8 @@ package friasoft.gn.schoolapp.dto;
 
 public record RegistrationDTO(
     StudentRegistrationDTO student,
-    ParentRegistrationDTO father,
-    ParentRegistrationDTO mother,
+    /** Représentant légal unique (père, mère ou tuteur). */
+    LegalGuardianRegistrationDTO legalGuardian,
     Long classId,
     /** Facultatif : encaissement désormais sur l’écran finance. Absent ou 0 → aucun paiement à l’inscription. */
     Double amountPaid,
@@ -17,4 +17,3 @@ public record RegistrationDTO(
     Double tuitionPayablePercent
 ) {
 }
-

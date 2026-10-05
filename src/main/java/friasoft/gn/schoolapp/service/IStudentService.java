@@ -29,4 +29,12 @@ public interface IStudentService {
     void unlinkFather(Long studentId);
 
     void unlinkMother(Long studentId);
+
+    void unlinkTutor(Long studentId);
+
+    Student linkFather(Long studentId, friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body);
+
+    Student linkMother(Long studentId, friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body);
+
+    Student linkTutor(Long studentId, friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body);
 }

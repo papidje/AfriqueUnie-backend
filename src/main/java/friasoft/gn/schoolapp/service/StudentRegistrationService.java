@@ -3,7 +3,7 @@ package friasoft.gn.schoolapp.service;
 import friasoft.gn.schoolapp.dto.FamilyPreviewDtos.FamilyPreviewResponse;
 import friasoft.gn.schoolapp.dto.FamilyPreviewDtos.ParentSummary;
 import friasoft.gn.schoolapp.dto.FamilyPreviewDtos.SiblingStudentRow;
-import friasoft.gn.schoolapp.dto.ParentRegistrationDTO;
+import friasoft.gn.schoolapp.dto.LegalGuardianRegistrationDTO;
 import friasoft.gn.schoolapp.dto.RegistrationDTO;
 import friasoft.gn.schoolapp.dto.StudentRegistrationDTO;
 import friasoft.gn.schoolapp.entity.auth.User;
@@ -47,6 +47,9 @@ public class StudentRegistrationService {
         if (dto.classId() == null) {
             throw new IllegalArgumentException("classId obligatoire.");
         }
+        if (dto.legalGuardian() == null) {
+            throw new IllegalArgumentException("Représentant légal obligatoire.");
+        }
         double amountPaid = dto.amountPaid() == null ? 0d : dto.amountPaid();
         if (amountPaid < 0) {
             throw new IllegalArgumentException("amountPaid doit être >= 0.");
@@ -58,9 +61,6 @@ public class StudentRegistrationService {
         var civility = parseCivility(studentDto.civility());
 
         SchoolClassInfo loaded = loadSchoolClassAndAssertAccess(dto.classId());
-
-        Parent father = resolveOrCreateParent(dto.father(), tenantId);
-        Parent mother = resolveOrCreateParent(dto.mother(), tenantId);
 
         Student student = new Student();
         student.setCivility(civility);
@@ -76,8 +76,7 @@ public class StudentRegistrationService {
         student.setCommunicationPhone(normalizePhoneOrNull(studentDto.communicationPhone()));
         student.setCommunicationEmail(trimToNull(studentDto.communicationEmail()));
         validateOptionalEmail(studentDto.communicationEmail(), "Email de communication");
-        student.setFather(father);
-        student.setMother(mother);
+        applyLegalGuardian(student, dto.legalGuardian());
         student.setEmergencyContactName(trimToNull(studentDto.emergencyContactName()));
         student.setEmergencyContactPhone(normalizePhoneOrNull(studentDto.emergencyContactPhone()));
         student.setBloodGroup(trimToNull(studentDto.bloodGroup()));
@@ -112,18 +111,35 @@ public class StudentRegistrationService {
     }
 
     /**
-     * Aperçu fratrie pour l’étape scolarité (parents déjà connus en annuaire via téléphone).
-     * Listes : commune (père ET mère), enfants du père hors commune, enfants de la mère hors commune.
+     * Aperçu fratrie pour l’étape scolarité.
+     * Au moins un téléphone (père et/ou mère) ; les deux optionnels individuellement.
      */
     @Transactional(readOnly = true)
     public FamilyPreviewResponse previewFamily(String fatherPhoneRaw, String motherPhoneRaw) {
-        String fatherPhone = normalizePhone(nonBlank(fatherPhoneRaw, "Téléphone du père obligatoire."));
-        String motherPhone = normalizePhone(nonBlank(motherPhoneRaw, "Téléphone de la mère obligatoire."));
-        GuineaContactValidation.requireValidGuineaPhone(fatherPhone, "Téléphone du père");
-        GuineaContactValidation.requireValidGuineaPhone(motherPhone, "Téléphone de la mère");
+        String fatherPhone = trimToNull(fatherPhoneRaw);
+        String motherPhone = trimToNull(motherPhoneRaw);
+        if (fatherPhone == null && motherPhone == null) {
+            return new FamilyPreviewResponse(
+                emptyParentSummary(null),
+                emptyParentSummary(null),
+                List.of(),
+                List.of(),
+                List.of()
+            );
+        }
 
-        Optional<Parent> fatherOpt = parentService.findByPhone(fatherPhone);
-        Optional<Parent> motherOpt = parentService.findByPhone(motherPhone);
+        Optional<Parent> fatherOpt = Optional.empty();
+        Optional<Parent> motherOpt = Optional.empty();
+        if (fatherPhone != null) {
+            fatherPhone = normalizePhone(fatherPhone);
+            GuineaContactValidation.requireValidGuineaPhone(fatherPhone, "Téléphone du père");
+            fatherOpt = parentService.findByPhone(fatherPhone);
+        }
+        if (motherPhone != null) {
+            motherPhone = normalizePhone(motherPhone);
+            GuineaContactValidation.requireValidGuineaPhone(motherPhone, "Téléphone de la mère");
+            motherOpt = parentService.findByPhone(motherPhone);
+        }
 
         ParentSummary fatherSummary = toParentSummary(fatherOpt, fatherPhone);
         ParentSummary motherSummary = toParentSummary(motherOpt, motherPhone);
@@ -167,9 +183,62 @@ public class StudentRegistrationService {
         return new FamilyPreviewResponse(fatherSummary, motherSummary, bothRows, fatherOnly, motherOnly);
     }
 
+    private void applyLegalGuardian(Student student, LegalGuardianRegistrationDTO guardian) {
+        String relation = nonBlank(guardian.relation(), "Lien avec l'élève obligatoire.").trim().toUpperCase();
+        String lastName = nonBlank(guardian.lastName(), "Nom du représentant obligatoire.");
+        String firstName = nonBlank(guardian.firstName(), "Prénom du représentant obligatoire.");
+        validateOptionalEmail(guardian.email(), "Email du représentant");
+        String phone = normalizePhoneOrNull(guardian.phone());
+
+        switch (relation) {
+            case "PERE" -> {
+                Parent father = parentService.resolveOrCreate(
+                    new friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest(
+                        lastName,
+                        firstName,
+                        phone,
+                        trimToNull(guardian.email()),
+                        trimToNull(guardian.profession()),
+                        trimToNull(guardian.address())
+                    )
+                );
+                student.setFather(father);
+                student.setMother(null);
+            }
+            case "MERE" -> {
+                Parent mother = parentService.resolveOrCreate(
+                    new friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest(
+                        lastName,
+                        firstName,
+                        phone,
+                        trimToNull(guardian.email()),
+                        trimToNull(guardian.profession()),
+                        trimToNull(guardian.address())
+                    )
+                );
+                student.setMother(mother);
+                student.setFather(null);
+            }
+            case "TUTEUR" -> {
+                Parent tutor = parentService.resolveOrCreate(
+                    new friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest(
+                        lastName,
+                        firstName,
+                        phone,
+                        trimToNull(guardian.email()),
+                        trimToNull(guardian.profession()),
+                        trimToNull(guardian.address())
+                    )
+                );
+                student.setTutor(tutor);
+            }
+            default -> throw new IllegalArgumentException("Lien invalide (attendu PERE|MERE|TUTEUR).");
+        }
+    }
+
     private ParentSummary toParentSummary(Optional<Parent> opt, String phone) {
         if (opt.isEmpty()) {
-            return new ParentSummary(null, null, null, phone, null, null, null, false);
+            return emptyParentSummary(phone);
         }
         Parent p = opt.get();
         return new ParentSummary(
@@ -182,6 +251,10 @@ public class StudentRegistrationService {
             p.getAddress(),
             true
         );
+    }
+
+    private static ParentSummary emptyParentSummary(String phone) {
+        return new ParentSummary(null, null, null, phone, null, null, null, false);
     }
 
     private SiblingStudentRow toSiblingRow(Student s) {
@@ -211,30 +284,6 @@ public class StudentRegistrationService {
             .orElseThrow(() -> new IllegalArgumentException("SchoolClass introuvable."));
         schoolService.assertCurrentUserCanAccessSchool(sc.getYear().getSchool().getId());
         return new SchoolClassInfo(sc);
-    }
-
-    private Parent resolveOrCreateParent(ParentRegistrationDTO parentDto, Long tenantId) {
-        if (parentDto == null) {
-            throw new IllegalArgumentException("Infos parent obligatoires.");
-        }
-        if (parentDto.phone() == null || parentDto.phone().isBlank()) {
-            throw new IllegalArgumentException("phone parent obligatoire.");
-        }
-        String normalized = normalizePhone(parentDto.phone());
-        GuineaContactValidation.requireValidGuineaPhone(normalized, "Téléphone parent");
-        validateOptionalEmail(parentDto.email(), "Email parent");
-        return parentService.findByPhone(normalized)
-            .orElseGet(() -> {
-                Parent p = new Parent();
-                p.setLastName(nonBlank(parentDto.lastName(), "Nom parent obligatoire."));
-                p.setFirstName(nonBlank(parentDto.firstName(), "Prénom parent obligatoire."));
-                p.setPhone(normalized);
-                p.setEmail(trimToNull(parentDto.email()));
-                p.setProfession(trimToNull(parentDto.profession()));
-                p.setAddress(trimToNull(parentDto.address()));
-                // TenantId injecté par ParentService.save()
-                return parentService.save(p);
-            });
     }
 
     private static Long requireTenantIdFromSecurity() {
@@ -302,4 +351,3 @@ public class StudentRegistrationService {
         return out.isEmpty() ? null : out;
     }
 }
-

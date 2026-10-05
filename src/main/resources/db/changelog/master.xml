@@ -64,5 +64,7 @@
     <include file="changes/v0_055.sql" relativeToChangelogFile="true"/>
     <include file="changes/v0_056.sql" relativeToChangelogFile="true"/>
     <include file="changes/v0_057.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_058.sql" relativeToChangelogFile="true"/>
+    <include file="changes/v0_059.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

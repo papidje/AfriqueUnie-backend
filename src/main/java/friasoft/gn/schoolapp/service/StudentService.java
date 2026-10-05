@@ -3,6 +3,7 @@ package friasoft.gn.schoolapp.service;
 import friasoft.gn.schoolapp.dto.request.StudentPatchRequest;
 import friasoft.gn.schoolapp.dto.request.StudentProfileUpdateRequest;
 import friasoft.gn.schoolapp.entity.auth.User;
+import friasoft.gn.schoolapp.entity.school.Parent;
 import friasoft.gn.schoolapp.entity.school.SchoolClass;
 import friasoft.gn.schoolapp.entity.school.Student;
 import friasoft.gn.schoolapp.repository.IGradeRepository;
@@ -33,6 +34,7 @@ public class StudentService implements IStudentService {
     private final IPaymentRepository paymentRepository;
     private final IGradeRepository gradeRepository;
     private final SchoolService schoolService;
+    private final ParentService parentService;
     private final UserRepository userRepository;
     private final TeacherTimetableAccessService teacherTimetableAccessService;
     private final FileStorageService fileStorageService;
@@ -149,8 +151,8 @@ public class StudentService implements IStudentService {
             throw new IllegalArgumentException("Date de naissance obligatoire.");
         }
         student.setBirthDate(request.birthDate());
-        student.setEmergencyContactName(requireNonBlank(request.emergencyContactName(), "Contact d'urgence (nom) obligatoire."));
-        student.setEmergencyContactPhone(requireNonBlank(request.emergencyContactPhone(), "Contact d'urgence (téléphone) obligatoire."));
+        student.setEmergencyContactName(trimToNull(request.emergencyContactName()));
+        student.setEmergencyContactPhone(trimToNull(request.emergencyContactPhone()));
         if (request.cardNumber() != null) {
             String card = trimToNull(request.cardNumber());
             assertCardNumberAvailable(student.getTenantId(), card, student.getId());
@@ -176,10 +178,6 @@ public class StudentService implements IStudentService {
         if (request.emergencyContactPhone() != null) student.setEmergencyContactPhone(trimToNull(request.emergencyContactPhone()));
         if (request.bloodGroup() != null) student.setBloodGroup(trimToNull(request.bloodGroup()));
         if (request.allergies() != null) student.setAllergies(trimToNull(request.allergies()));
-        if (request.tutorName() != null) student.setTutorName(trimToNull(request.tutorName()));
-        if (request.tutorProfession() != null) student.setTutorProfession(trimToNull(request.tutorProfession()));
-        if (request.tutorPhone() != null) student.setTutorPhone(trimToNull(request.tutorPhone()));
-        if (request.tutorEmail() != null) student.setTutorEmail(trimToNull(request.tutorEmail()));
         if (request.classHistory() != null) student.setClassHistory(trimToNull(request.classHistory()));
         if (request.cardNumber() != null) {
             String card = trimToNull(request.cardNumber());
@@ -283,6 +281,38 @@ public class StudentService implements IStudentService {
         Student student = loadStudentForUpdate(studentId);
         student.setMother(null);
         repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public void unlinkTutor(Long studentId) {
+        Student student = loadStudentForUpdate(studentId);
+        student.setTutor(null);
+        repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public Student linkFather(Long studentId, friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body) {
+        Student student = loadStudentForUpdate(studentId);
+        student.setFather(parentService.resolveOrCreate(body));
+        return repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public Student linkMother(Long studentId, friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body) {
+        Student student = loadStudentForUpdate(studentId);
+        student.setMother(parentService.resolveOrCreate(body));
+        return repository.save(student);
+    }
+
+    @Override
+    @Transactional
+    public Student linkTutor(Long studentId, friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body) {
+        Student student = loadStudentForUpdate(studentId);
+        student.setTutor(parentService.resolveOrCreate(body));
+        return repository.save(student);
     }
 
     private Student loadStudentForUpdate(Long studentId) {

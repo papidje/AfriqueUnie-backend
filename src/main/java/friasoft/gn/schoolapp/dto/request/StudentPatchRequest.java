@@ -16,10 +16,6 @@ public record StudentPatchRequest(
     String emergencyContactPhone,
     String bloodGroup,
     String allergies,
-    String tutorName,
-    String tutorProfession,
-    String tutorPhone,
-    String tutorEmail,
     String enrollmentStatus,
     String classHistory,
     /** Numéro de carte scolaire (null = inchangé ; chaîne vide = effacer). */

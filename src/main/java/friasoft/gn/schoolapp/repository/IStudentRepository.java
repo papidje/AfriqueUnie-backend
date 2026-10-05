@@ -149,6 +149,7 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         select distinct s from Student s
         left join fetch s.father
         left join fetch s.mother
+        left join fetch s.tutor
         left join fetch s.school
         left join fetch s.schoolClass sc
         left join fetch sc.year y
@@ -161,6 +162,7 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         select distinct s from Student s
         left join fetch s.father
         left join fetch s.mother
+        left join fetch s.tutor
         where s.schoolClass.id = :classId
         order by s.lastName asc, s.firstName asc
         """)
@@ -225,7 +227,8 @@ public interface IStudentRepository extends JpaRepository<Student, Long> {
         left join fetch s.schoolClass sc
         left join fetch s.father
         left join fetch s.mother
-        where s.father.id = :parentId or s.mother.id = :parentId
+        left join fetch s.tutor
+        where s.father.id = :parentId or s.mother.id = :parentId or s.tutor.id = :parentId
         order by s.lastName asc, s.firstName asc, s.id asc
         """)
     List<Student> findAllByParentIdWithClass(@Param("parentId") Long parentId);

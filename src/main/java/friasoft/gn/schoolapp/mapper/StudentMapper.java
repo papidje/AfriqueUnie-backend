@@ -46,10 +46,6 @@ public class StudentMapper {
             .emergencyContactPhone(student.getEmergencyContactPhone())
             .bloodGroup(student.getBloodGroup())
             .allergies(student.getAllergies())
-            .tutorName(student.getTutorName())
-            .tutorProfession(student.getTutorProfession())
-            .tutorPhone(student.getTutorPhone())
-            .tutorEmail(student.getTutorEmail())
             .photoPath(student.getPhotoPath())
             .classHistory(student.getClassHistory())
             .schoolClassId(student.getSchoolClass() != null ? student.getSchoolClass().getId() : null)
@@ -76,6 +72,9 @@ public class StudentMapper {
         }
         if (student.getMother() != null) {
             b.mother(toParentResponse(student.getMother()));
+        }
+        if (student.getTutor() != null) {
+            b.tutor(toParentResponse(student.getTutor()));
         }
         return b.build();
     }

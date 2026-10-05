@@ -22,7 +22,7 @@ public interface IParentRepository extends JpaRepository<Parent, Long> {
         join s.schoolClass sc
         join sc.year y
         cross join Parent p
-        where (s.father = p or s.mother = p)
+        where (s.father = p or s.mother = p or s.tutor = p)
             and y.school.id = :schoolId
             and y.active = true
         group by p.id, p.lastName, p.firstName, p.phone, p.email

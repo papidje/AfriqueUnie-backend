@@ -24,7 +24,7 @@ public class ParentDeliveryResolver {
         Map<String, RecipientAgg> byNormEmail = new LinkedHashMap<>();
         mergeParent(byNormEmail, student.getFather());
         mergeParent(byNormEmail, student.getMother());
-        mergeTutor(byNormEmail, student);
+        mergeParent(byNormEmail, student.getTutor());
 
         List<ParentDeliveryTarget> out = new ArrayList<>();
         for (RecipientAgg agg : byNormEmail.values()) {
@@ -57,21 +57,6 @@ public class ParentDeliveryResolver {
         agg.addName(displayName(p));
     }
 
-    private static void mergeTutor(Map<String, RecipientAgg> byKey, Student student) {
-        if (student == null || !StringUtils.hasText(student.getTutorEmail())) {
-            return;
-        }
-        String email = student.getTutorEmail().trim();
-        if (!isPlausibleEmail(email)) {
-            return;
-        }
-        String norm = normalize(email);
-        RecipientAgg agg = byKey.computeIfAbsent(norm, k -> new RecipientAgg(email, student.getTutorPhone()));
-        agg.markTutorSynthetic();
-        String nm = StringUtils.hasText(student.getTutorName()) ? student.getTutorName().trim() : "";
-        agg.addName(nm.isBlank() ? " " : nm);
-    }
-
     private static String displayName(Parent p) {
         return (p.getFirstName() + " " + p.getLastName()).trim();
     }
@@ -86,18 +71,13 @@ public class ParentDeliveryResolver {
 
     private static final class RecipientAgg {
         private final String email;
-        private final String tutorPhone;
+        private final String phoneFallback;
         private final Set<Long> parentIds = new TreeSet<>();
-        private boolean tutorSynthetic;
         private final List<String> names = new ArrayList<>();
 
         RecipientAgg(String email, String phoneFallback) {
             this.email = email;
-            this.tutorPhone = phoneFallback;
-        }
-
-        void markTutorSynthetic() {
-            tutorSynthetic = true;
+            this.phoneFallback = phoneFallback;
         }
 
         void addParentId(Long id) {
@@ -117,14 +97,14 @@ public class ParentDeliveryResolver {
         }
 
         String phone() {
-            return tutorPhone;
+            return phoneFallback;
         }
 
         long primaryParentId() {
             if (!parentIds.isEmpty()) {
                 return parentIds.iterator().next();
             }
-            return CommunicationEventType.SYNTHETIC_PARENT_ID_TUTOR;
+            return 0L;
         }
 
         String buildGreeting() {

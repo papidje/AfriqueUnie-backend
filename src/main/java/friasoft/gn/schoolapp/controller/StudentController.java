@@ -191,6 +191,20 @@ public class StudentController {
     }
 
     @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PutMapping("/{id}/father")
+    public ResponseEntity<StudentDetailResponse> linkFather(
+        @PathVariable Long id,
+        @RequestBody friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body
+    ) {
+        try {
+            Student updated = service.linkFather(id, body);
+            return ResponseEntity.ok(mapper.toDetailDto(updated));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
     @DeleteMapping("/{id}/mother")
     public ResponseEntity<Void> unlinkMother(@PathVariable Long id) {
         if (service.findById(id).isEmpty()) {
@@ -198,6 +212,44 @@ public class StudentController {
         }
         service.unlinkMother(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PutMapping("/{id}/mother")
+    public ResponseEntity<StudentDetailResponse> linkMother(
+        @PathVariable Long id,
+        @RequestBody friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body
+    ) {
+        try {
+            Student updated = service.linkMother(id, body);
+            return ResponseEntity.ok(mapper.toDetailDto(updated));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @DeleteMapping("/{id}/tutor")
+    public ResponseEntity<Void> unlinkTutor(@PathVariable Long id) {
+        if (service.findById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        service.unlinkTutor(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN_ECOLE','STAFF','DIRECTOR')")
+    @PutMapping("/{id}/tutor")
+    public ResponseEntity<StudentDetailResponse> linkTutor(
+        @PathVariable Long id,
+        @RequestBody friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest body
+    ) {
+        try {
+            Student updated = service.linkTutor(id, body);
+            return ResponseEntity.ok(mapper.toDetailDto(updated));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @PreAuthorize("hasAnyRole('ADMIN_ECOLE','DIRECTOR')")

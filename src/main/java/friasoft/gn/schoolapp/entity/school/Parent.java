@@ -36,7 +36,7 @@ public class Parent implements TenantAware {
     @Column(nullable = false, length = 100)
     private String firstName;
 
-    @Column(nullable = false, length = 40)
+    @Column(length = 40)
     private String phone;
 
     @Column(length = 180)

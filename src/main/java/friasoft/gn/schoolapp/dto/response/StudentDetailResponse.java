@@ -29,10 +29,6 @@ public class StudentDetailResponse {
     private String emergencyContactPhone;
     private String bloodGroup;
     private String allergies;
-    private String tutorName;
-    private String tutorProfession;
-    private String tutorPhone;
-    private String tutorEmail;
     private String photoPath;
     private String enrollmentStatus;
     private String classHistory;
@@ -43,4 +39,5 @@ public class StudentDetailResponse {
     private String schoolYearLabel;
     private ParentResponse father;
     private ParentResponse mother;
+    private ParentResponse tutor;
 }

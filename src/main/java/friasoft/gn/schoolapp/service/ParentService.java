@@ -49,7 +49,7 @@ public class ParentService {
         Long tenantId = requireTenantId();
         parent.setTenantId(tenantId);
         GuineaContactValidation.requireValidEmail(parent.getEmail(), "Email");
-        parent.setPhone(normalizePhone(parent.getPhone()));
+        parent.setPhone(normalizePhoneOptional(parent.getPhone()));
         return parentRepository.save(parent);
     }
 
@@ -82,13 +82,15 @@ public class ParentService {
             .orElseThrow(() -> new IllegalArgumentException("Parent introuvable."));
         String lastName = requireNonBlank(body.lastName(), "Nom obligatoire.");
         String firstName = requireNonBlank(body.firstName(), "Prénom obligatoire.");
-        String normalized = normalizePhone(body.phone());
+        String normalized = normalizePhoneOptional(body.phone());
         Long tenantId = requireTenantId();
-        parentRepository.findByTenantIdAndPhone(tenantId, normalized)
-            .filter(other -> !other.getId().equals(parent.getId()))
-            .ifPresent(other -> {
-                throw new IllegalArgumentException("Ce numéro est déjà utilisé par un autre parent.");
-            });
+        if (normalized != null) {
+            parentRepository.findByTenantIdAndPhone(tenantId, normalized)
+                .filter(other -> !other.getId().equals(parent.getId()))
+                .ifPresent(other -> {
+                    throw new IllegalArgumentException("Ce numéro est déjà utilisé par un autre parent.");
+                });
+        }
         GuineaContactValidation.requireValidEmail(body.email(), "Email");
         parent.setLastName(lastName);
         parent.setFirstName(firstName);
@@ -102,13 +104,18 @@ public class ParentService {
     private static ParentChildRow toChildRow(Student s, Long parentId) {
         boolean asFather = s.getFather() != null && parentId.equals(s.getFather().getId());
         boolean asMother = s.getMother() != null && parentId.equals(s.getMother().getId());
+        boolean asTutor = s.getTutor() != null && parentId.equals(s.getTutor().getId());
         String relation;
         if (asFather && asMother) {
             relation = "PERE_ET_MERE";
         } else if (asFather) {
             relation = "PERE";
-        } else {
+        } else if (asMother) {
             relation = "MERE";
+        } else if (asTutor) {
+            relation = "TUTEUR";
+        } else {
+            relation = "TUTEUR";
         }
         String className = s.getSchoolClass() != null ? s.getSchoolClass().getName() : null;
         String status = s.getEnrollmentStatus() != null ? s.getEnrollmentStatus().name() : null;
@@ -122,6 +129,31 @@ public class ParentService {
             relation,
             s.getCivility() != null ? s.getCivility().name() : null
         );
+    }
+
+    @Transactional
+    public Parent resolveOrCreate(ParentWriteRequest body) {
+        if (body == null) {
+            throw new IllegalArgumentException("Infos parent obligatoires.");
+        }
+        String lastName = requireNonBlank(body.lastName(), "Nom parent obligatoire.");
+        String firstName = requireNonBlank(body.firstName(), "Prénom parent obligatoire.");
+        GuineaContactValidation.requireValidEmail(body.email(), "Email parent");
+        String normalizedPhone = normalizePhoneOptional(body.phone());
+        if (normalizedPhone != null) {
+            Optional<Parent> existing = findByPhone(normalizedPhone);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+        Parent p = new Parent();
+        p.setLastName(lastName);
+        p.setFirstName(firstName);
+        p.setPhone(normalizedPhone);
+        p.setEmail(trimToNull(body.email()));
+        p.setProfession(trimToNull(body.profession()));
+        p.setAddress(trimToNull(body.address()));
+        return save(p);
     }
 
     private static String requireNonBlank(String value, String message) {
@@ -146,6 +178,14 @@ public class ParentService {
         String compact = GuineaContactValidation.compactPhone(phone);
         GuineaContactValidation.requireValidGuineaPhone(compact, "Téléphone");
         return compact;
+    }
+
+    /** Téléphone optionnel : vide → {@code null} ; sinon validation Guinée. */
+    private static String normalizePhoneOptional(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return null;
+        }
+        return normalizePhone(phone);
     }
 
     private static Long requireTenantId() {

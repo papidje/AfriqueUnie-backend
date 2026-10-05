@@ -51,6 +51,10 @@ public class Student implements TenantAware {
     @JoinColumn(name = "mother_id")
     private Parent mother;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tutor_id")
+    private Parent tutor;
+
     private LocalDate birthDate;
 
     @Column(length = 150)
@@ -93,18 +97,6 @@ public class Student implements TenantAware {
 
     @Column(length = 500)
     private String allergies;
-
-    @Column(length = 150)
-    private String tutorName;
-
-    @Column(length = 150)
-    private String tutorProfession;
-
-    @Column(length = 40)
-    private String tutorPhone;
-
-    @Column(length = 180)
-    private String tutorEmail;
 
     @Column(length = 255)
     private String photoPath;

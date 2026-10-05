@@ -139,15 +139,14 @@ public class PaymentConfirmationMailService {
     }
 
     /**
-     * Une entrée par adresse distincte. Regroupe père, mère et tuteur (e-mail
-     * {@link Student#getTutorEmail()} / {@link Student#getTutorName()}) : si
-     * plusieurs rôles partagent la même adresse, les prénoms sont joints par « et ».
+     * Une entrée par adresse distincte. Regroupe père, mère et tuteur :
+     * si plusieurs rôles partagent la même adresse, les prénoms sont joints par « et ».
      */
     private static List<ParentRecipient> buildParentRecipients(Student student) {
         Map<String, RecipientGroup> byKey = new LinkedHashMap<>();
         mergeRecipient(byKey, student.getFather());
         mergeRecipient(byKey, student.getMother());
-        mergeTutor(byKey, student);
+        mergeRecipient(byKey, student.getTutor());
         List<ParentRecipient> out = new ArrayList<>();
         for (RecipientGroup g : byKey.values()) {
             if (!isPlausibleEmail(g.getAddress())) {
@@ -170,23 +169,6 @@ public class PaymentConfirmationMailService {
         String key = normalizeEmailKey(email);
         byKey.computeIfAbsent(key, k -> new RecipientGroup(email));
         byKey.get(key).addName(parentDisplayName(p));
-    }
-
-    private static void mergeTutor(Map<String, RecipientGroup> byKey, Student student) {
-        if (student == null || !StringUtils.hasText(student.getTutorEmail())) {
-            return;
-        }
-        String email = student.getTutorEmail().trim();
-        if (!isPlausibleEmail(email)) {
-            return;
-        }
-        String key = normalizeEmailKey(email);
-        String display = StringUtils.hasText(student.getTutorName()) ? student.getTutorName().trim() : "";
-        if (display.isBlank()) {
-            display = " ";
-        }
-        byKey.computeIfAbsent(key, k -> new RecipientGroup(email));
-        byKey.get(key).addName(display);
     }
 
     private static final class RecipientGroup {
