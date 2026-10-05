@@ -17,72 +17,91 @@ WHERE s.tutor_id IS NULL
   AND p.tenant_id = s.tenant_id
   AND p.phone = trim(s.tutor_phone);
 
--- Crée une fiche Parent pour chaque élève encore sans tutor_id mais avec infos tuteur.
-DO $$
-DECLARE
-    r RECORD;
-    new_id BIGINT;
-    raw_name TEXT;
-    fn TEXT;
-    ln TEXT;
-    sp INT;
-BEGIN
-    FOR r IN
-        SELECT id, tenant_id, tutor_name, tutor_phone, tutor_email, tutor_profession
-        FROM schools.students
-        WHERE tutor_id IS NULL
-          AND (
-              NULLIF(trim(tutor_name), '') IS NOT NULL
-              OR NULLIF(trim(tutor_phone), '') IS NOT NULL
-              OR NULLIF(trim(tutor_email), '') IS NOT NULL
-              OR NULLIF(trim(tutor_profession), '') IS NOT NULL
-          )
-    LOOP
-        new_id := NULL;
-        IF r.tutor_phone IS NOT NULL AND trim(r.tutor_phone) <> '' THEN
-            SELECT p.id INTO new_id
-            FROM schools.parents p
-            WHERE p.tenant_id = r.tenant_id
-              AND p.phone = trim(r.tutor_phone)
-            LIMIT 1;
-        END IF;
+-- Staging des élèves encore sans tutor_id mais avec infos tuteur textuelles.
+CREATE TABLE IF NOT EXISTS schools._mig_tutor_059 (
+    student_id BIGINT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(40),
+    email VARCHAR(180),
+    profession VARCHAR(150)
+);
 
-        IF new_id IS NULL THEN
-            raw_name := NULLIF(trim(r.tutor_name), '');
-            IF raw_name IS NULL THEN
-                fn := 'Tuteur';
-                ln := 'Ancien';
-            ELSE
-                sp := position(' ' IN raw_name);
-                IF sp > 0 THEN
-                    fn := trim(substring(raw_name FROM 1 FOR sp - 1));
-                    ln := trim(substring(raw_name FROM sp + 1));
-                    IF ln = '' THEN
-                        ln := fn;
-                        fn := '—';
-                    END IF;
-                ELSE
-                    fn := '—';
-                    ln := raw_name;
-                END IF;
-            END IF;
+DELETE FROM schools._mig_tutor_059;
 
-            INSERT INTO schools.parents (tenant_id, last_name, first_name, phone, email, profession, address)
-            VALUES (
-                r.tenant_id,
-                left(ln, 100),
-                left(fn, 100),
-                NULLIF(trim(r.tutor_phone), ''),
-                NULLIF(trim(r.tutor_email), ''),
-                NULLIF(trim(r.tutor_profession), ''),
-                NULL
+INSERT INTO schools._mig_tutor_059 (student_id, tenant_id, first_name, last_name, phone, email, profession)
+SELECT
+    s.id,
+    s.tenant_id,
+    CASE
+        WHEN NULLIF(trim(s.tutor_name), '') IS NULL THEN 'Tuteur'
+        WHEN position(' ' IN trim(s.tutor_name)) > 0 THEN
+            COALESCE(
+                NULLIF(left(trim(substring(trim(s.tutor_name) FROM 1 FOR position(' ' IN trim(s.tutor_name)) - 1)), 100), ''),
+                '—'
             )
-            RETURNING id INTO new_id;
-        END IF;
+        ELSE '—'
+    END,
+    CASE
+        WHEN NULLIF(trim(s.tutor_name), '') IS NULL THEN 'Ancien'
+        WHEN position(' ' IN trim(s.tutor_name)) > 0 THEN
+            COALESCE(
+                NULLIF(left(trim(substring(trim(s.tutor_name) FROM position(' ' IN trim(s.tutor_name)) + 1)), 100), ''),
+                NULLIF(left(trim(substring(trim(s.tutor_name) FROM 1 FOR position(' ' IN trim(s.tutor_name)) - 1)), 100), ''),
+                'Ancien'
+            )
+        ELSE left(trim(s.tutor_name), 100)
+    END,
+    NULLIF(trim(s.tutor_phone), ''),
+    NULLIF(trim(s.tutor_email), ''),
+    NULLIF(trim(s.tutor_profession), '')
+FROM schools.students s
+WHERE s.tutor_id IS NULL
+  AND (
+      NULLIF(trim(s.tutor_name), '') IS NOT NULL
+      OR NULLIF(trim(s.tutor_phone), '') IS NOT NULL
+      OR NULLIF(trim(s.tutor_email), '') IS NOT NULL
+      OR NULLIF(trim(s.tutor_profession), '') IS NOT NULL
+  );
 
-        UPDATE schools.students SET tutor_id = new_id WHERE id = r.id;
-    END LOOP;
-END $$;
+-- Sécurité : first_name / last_name jamais null ni vides.
+UPDATE schools._mig_tutor_059
+SET first_name = '—'
+WHERE first_name IS NULL OR trim(first_name) = '';
+
+UPDATE schools._mig_tutor_059
+SET last_name = 'Ancien'
+WHERE last_name IS NULL OR trim(last_name) = '';
+
+-- Crée une fiche Parent par élève (marqueur temporaire dans address pour le rattachement).
+INSERT INTO schools.parents (tenant_id, last_name, first_name, phone, email, profession, address)
+SELECT
+    m.tenant_id,
+    m.last_name,
+    m.first_name,
+    m.phone,
+    m.email,
+    m.profession,
+    '__mig_tutor_059:' || m.student_id::text
+FROM schools._mig_tutor_059 m
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM schools.parents p
+    WHERE p.address = '__mig_tutor_059:' || m.student_id::text
+);
+
+UPDATE schools.students s
+SET tutor_id = p.id
+FROM schools.parents p
+WHERE s.tutor_id IS NULL
+  AND p.address = '__mig_tutor_059:' || s.id::text;
+
+UPDATE schools.parents
+SET address = NULL
+WHERE address LIKE '__mig_tutor_059:%';
+
+DROP TABLE IF EXISTS schools._mig_tutor_059;
 
 ALTER TABLE schools.students DROP COLUMN IF EXISTS tutor_name;
 ALTER TABLE schools.students DROP COLUMN IF EXISTS tutor_profession;
