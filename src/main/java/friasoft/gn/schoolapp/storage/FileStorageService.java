@@ -16,6 +16,8 @@ public class FileStorageService {
 
     private static final String PHOTO_WEB_PREFIX = "/uploads/photos/";
     private static final String LOGO_WEB_PREFIX = "/uploads/logos/";
+    /** Côté le plus long de la photo élève (cartes d’accès) ; le ratio d’aspect est conservé. */
+    private static final int STUDENT_PHOTO_MAX_SIDE = 300;
     private static final int SCHOOL_LOGO_MAX_SIDE = 500;
 
     private final Path photosDir;
@@ -41,7 +43,8 @@ public class FileStorageService {
             Path temp = Files.createTempFile("student-photo-", ".tmp");
             Files.copy(photo.getInputStream(), temp, StandardCopyOption.REPLACE_EXISTING);
             Thumbnails.of(temp.toFile())
-                .size(200, 200)
+                .size(STUDENT_PHOTO_MAX_SIDE, STUDENT_PHOTO_MAX_SIDE)
+                .keepAspectRatio(true)
                 .outputFormat("jpg")
                 .outputQuality(0.9)
                 .toFile(target.toFile());
@@ -96,6 +99,7 @@ public class FileStorageService {
             Files.copy(logo.getInputStream(), temp, StandardCopyOption.REPLACE_EXISTING);
             Thumbnails.of(temp.toFile())
                 .size(SCHOOL_LOGO_MAX_SIDE, SCHOOL_LOGO_MAX_SIDE)
+                .keepAspectRatio(true)
                 .outputFormat("jpg")
                 .outputQuality(0.9)
                 .toFile(target.toFile());
