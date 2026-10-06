@@ -6,6 +6,8 @@ public final class ParentDtos {
     private ParentDtos() {}
 
     public record ParentWriteRequest(
+        /** {@code MONSIEUR} / {@code MADAME} — obligatoire à la saisie. */
+        String civility,
         String lastName,
         String firstName,
         String phone,
@@ -14,7 +16,7 @@ public final class ParentDtos {
         String address
     ) {}
 
-    /** Enfant lié au parent (père et/ou mère). */
+    /** Enfant lié au parent (père et/ou mère / tuteur). */
     public record ParentChildRow(
         Long id,
         String firstName,
@@ -22,15 +24,17 @@ public final class ParentDtos {
         String matricule,
         String className,
         String enrollmentStatus,
-        /** {@code PERE}, {@code MERE} ou {@code PERE_ET_MERE}. */
+        /** {@code PERE}, {@code MERE}, {@code PERE_ET_MERE} ou {@code TUTEUR}. */
         String relation,
-        /** {@code MONSIEUR} / {@code MADAME}. */
+        /** Civilité de l’élève : {@code MONSIEUR} / {@code MADAME}. */
         String civility
     ) {}
 
     public record ParentResponse(
         Long id,
         Long tenantId,
+        /** {@code MONSIEUR} / {@code MADAME} (peut être null pour les fiches anciennes). */
+        String civility,
         String lastName,
         String firstName,
         String phone,

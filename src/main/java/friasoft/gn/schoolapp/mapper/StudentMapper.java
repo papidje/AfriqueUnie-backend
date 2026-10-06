@@ -83,6 +83,7 @@ public class StudentMapper {
         return new ParentResponse(
             p.getId(),
             p.getTenantId(),
+            p.getCivility() != null ? p.getCivility().name() : null,
             p.getLastName(),
             p.getFirstName(),
             p.getPhone(),

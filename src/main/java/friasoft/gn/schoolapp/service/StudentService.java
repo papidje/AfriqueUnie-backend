@@ -223,7 +223,7 @@ public class StudentService implements IStudentService {
         student.setSchoolClass(target);
         student.setSchool(target.getYear().getSchool());
         student.setEnrollmentStatus(Student.EnrollmentStatus.INSCRIT);
-        appendClassHistory(student, "Transfert " + fromLabel + " → " + toLabel + " (" + LocalDate.now() + ")");
+        appendClassHistory(student, LocalDate.now() + " : Transfert " + fromLabel + " à " + toLabel);
         return repository.save(student);
     }
 
@@ -241,7 +241,7 @@ public class StudentService implements IStudentService {
         String fromLabel = student.getSchoolClass().getName();
         student.setSchoolClass(null);
         student.setEnrollmentStatus(Student.EnrollmentStatus.SANS_CLASSE);
-        appendClassHistory(student, "Désaffectation de " + fromLabel + " (" + LocalDate.now() + ")");
+        appendClassHistory(student, LocalDate.now() + " : Désaffectation de " + fromLabel);
         return repository.save(student);
     }
 
@@ -253,7 +253,7 @@ public class StudentService implements IStudentService {
         String fromLabel = student.getSchoolClass() != null ? student.getSchoolClass().getName() : "sans classe";
         student.setSchoolClass(null);
         student.setEnrollmentStatus(Student.EnrollmentStatus.DESINSCRIT);
-        appendClassHistory(student, "Désinscription (départ) depuis " + fromLabel + " (" + LocalDate.now() + ")");
+        appendClassHistory(student, LocalDate.now() + " : Désinscription (départ) depuis " + fromLabel);
         return repository.save(student);
     }
 

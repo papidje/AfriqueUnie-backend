@@ -92,6 +92,7 @@ public class ParentService {
                 });
         }
         GuineaContactValidation.requireValidEmail(body.email(), "Email");
+        parent.setCivility(requireCivility(body.civility()));
         parent.setLastName(lastName);
         parent.setFirstName(firstName);
         parent.setPhone(normalized);
@@ -136,6 +137,7 @@ public class ParentService {
         if (body == null) {
             throw new IllegalArgumentException("Infos parent obligatoires.");
         }
+        Parent.Civility civility = requireCivility(body.civility());
         String lastName = requireNonBlank(body.lastName(), "Nom parent obligatoire.");
         String firstName = requireNonBlank(body.firstName(), "Prénom parent obligatoire.");
         GuineaContactValidation.requireValidEmail(body.email(), "Email parent");
@@ -143,10 +145,16 @@ public class ParentService {
         if (normalizedPhone != null) {
             Optional<Parent> existing = findByPhone(normalizedPhone);
             if (existing.isPresent()) {
-                return existing.get();
+                Parent found = existing.get();
+                if (found.getCivility() == null) {
+                    found.setCivility(civility);
+                    return save(found);
+                }
+                return found;
             }
         }
         Parent p = new Parent();
+        p.setCivility(civility);
         p.setLastName(lastName);
         p.setFirstName(firstName);
         p.setPhone(normalizedPhone);
@@ -154,6 +162,17 @@ public class ParentService {
         p.setProfession(trimToNull(body.profession()));
         p.setAddress(trimToNull(body.address()));
         return save(p);
+    }
+
+    private static Parent.Civility requireCivility(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Civilité obligatoire.");
+        }
+        try {
+            return Parent.Civility.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Civilité invalide (MONSIEUR ou MADAME).");
+        }
     }
 
     private static String requireNonBlank(String value, String message) {

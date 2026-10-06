@@ -30,6 +30,10 @@ public class Parent implements TenantAware {
     @Column(name = "tenant_id")
     private Long tenantId;
 
+    @Column(length = 20)
+    @Enumerated(EnumType.STRING)
+    private Civility civility;
+
     @Column(nullable = false, length = 100)
     private String lastName;
 
@@ -53,4 +57,8 @@ public class Parent implements TenantAware {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    public enum Civility {
+        MONSIEUR, MADAME
+    }
 }

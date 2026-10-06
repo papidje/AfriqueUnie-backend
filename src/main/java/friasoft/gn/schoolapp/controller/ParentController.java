@@ -69,6 +69,7 @@ public class ParentController {
     public ResponseEntity<ParentResponse> create(@RequestBody ParentWriteRequest body) {
         try {
             Parent parent = new Parent();
+            parent.setCivility(requireCivility(body.civility()));
             parent.setLastName(requireNonBlank(body.lastName(), "Nom obligatoire."));
             parent.setFirstName(requireNonBlank(body.firstName(), "Prénom obligatoire."));
             parent.setPhone(body.phone());
@@ -88,6 +89,7 @@ public class ParentController {
         return new ParentResponse(
             p.getId(),
             p.getTenantId(),
+            p.getCivility() != null ? p.getCivility().name() : null,
             p.getLastName(),
             p.getFirstName(),
             p.getPhone(),
@@ -96,6 +98,17 @@ public class ParentController {
             p.getAddress(),
             includeChildren ? parentService.listChildren(p.getId()) : List.of()
         );
+    }
+
+    private static Parent.Civility requireCivility(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Civilité obligatoire.");
+        }
+        try {
+            return Parent.Civility.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Civilité invalide (MONSIEUR ou MADAME).");
+        }
     }
 
     private static String requireNonBlank(String value, String message) {

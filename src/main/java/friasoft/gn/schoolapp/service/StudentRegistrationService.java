@@ -191,6 +191,7 @@ public class StudentRegistrationService {
             case "PERE" -> {
                 Parent father = parentService.resolveOrCreate(
                     new friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest(
+                        guardian.civility(),
                         lastName,
                         firstName,
                         phone,
@@ -205,6 +206,7 @@ public class StudentRegistrationService {
             case "MERE" -> {
                 Parent mother = parentService.resolveOrCreate(
                     new friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest(
+                        guardian.civility(),
                         lastName,
                         firstName,
                         phone,
@@ -219,6 +221,7 @@ public class StudentRegistrationService {
             case "TUTEUR" -> {
                 Parent tutor = parentService.resolveOrCreate(
                     new friasoft.gn.schoolapp.dto.ParentDtos.ParentWriteRequest(
+                        guardian.civility(),
                         lastName,
                         firstName,
                         phone,
