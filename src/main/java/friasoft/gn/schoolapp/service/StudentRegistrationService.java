@@ -66,9 +66,6 @@ public class StudentRegistrationService {
         student.setCivility(civility);
         student.setFirstName(nonBlank(studentDto.firstName(), "firstName obligatoire."));
         student.setLastName(nonBlank(studentDto.lastName(), "lastName obligatoire."));
-        if (studentDto.birthDate() == null) {
-            throw new IllegalArgumentException("birthDate obligatoire.");
-        }
         student.setBirthDate(studentDto.birthDate());
         student.setBirthPlace(trimToNull(studentDto.birthPlace()));
         student.setNationality(trimToNull(studentDto.nationality()));

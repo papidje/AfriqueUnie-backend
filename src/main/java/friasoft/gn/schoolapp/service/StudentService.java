@@ -147,9 +147,6 @@ public class StudentService implements IStudentService {
         }
         student.setFirstName(requireNonBlank(request.firstName(), "Prénom obligatoire."));
         student.setLastName(requireNonBlank(request.lastName(), "Nom obligatoire."));
-        if (request.birthDate() == null) {
-            throw new IllegalArgumentException("Date de naissance obligatoire.");
-        }
         student.setBirthDate(request.birthDate());
         student.setEmergencyContactName(trimToNull(request.emergencyContactName()));
         student.setEmergencyContactPhone(trimToNull(request.emergencyContactPhone()));
@@ -168,7 +165,18 @@ public class StudentService implements IStudentService {
         if (request.civility() != null) student.setCivility(Student.Civility.valueOf(request.civility().trim().toUpperCase()));
         if (request.firstName() != null) student.setFirstName(request.firstName().trim());
         if (request.lastName() != null) student.setLastName(request.lastName().trim());
-        if (request.birthDate() != null) student.setBirthDate(request.birthDate());
+        if (request.birthDate() != null) {
+            String raw = request.birthDate().trim();
+            if (raw.isEmpty()) {
+                student.setBirthDate(null);
+            } else {
+                try {
+                    student.setBirthDate(LocalDate.parse(raw));
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Date de naissance invalide.");
+                }
+            }
+        }
         if (request.birthPlace() != null) student.setBirthPlace(trimToNull(request.birthPlace()));
         if (request.nationality() != null) student.setNationality(trimToNull(request.nationality()));
         if (request.address() != null) student.setAddress(trimToNull(request.address()));

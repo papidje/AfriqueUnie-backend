@@ -138,17 +138,16 @@ public class Student implements TenantAware {
     /**
      * Format : {@code [1|2]}{@code AAAA}{@code MM}{@code RRRR}
      * (civilité, année, mois sur 2 chiffres, aléatoire sur 4 chiffres).
+     * Si la date de naissance est absente, utilise la date du jour pour AAAA/MM.
      */
     public String buildMatricule() {
-        if (birthDate == null) {
-            throw new IllegalStateException("Date de naissance obligatoire pour générer le matricule.");
-        }
+        LocalDate ref = birthDate != null ? birthDate : LocalDate.now();
         int suffix = ThreadLocalRandom.current().nextInt(10_000);
         return String.format(
             "%s%04d%02d%04d",
             civility == Civility.MONSIEUR ? "1" : "2",
-            birthDate.getYear(),
-            birthDate.getMonthValue(),
+            ref.getYear(),
+            ref.getMonthValue(),
             suffix
         );
     }

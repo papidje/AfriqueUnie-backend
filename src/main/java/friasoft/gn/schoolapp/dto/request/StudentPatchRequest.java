@@ -1,12 +1,14 @@
 package friasoft.gn.schoolapp.dto.request;
 
-import java.time.LocalDate;
-
 public record StudentPatchRequest(
     String civility,
     String firstName,
     String lastName,
-    LocalDate birthDate,
+    /**
+     * Date de naissance (yyyy-MM-dd).
+     * {@code null} = inchangé ; chaîne vide = effacer.
+     */
+    String birthDate,
     String birthPlace,
     String nationality,
     String address,
