@@ -181,6 +181,27 @@ public interface UserSchoolAffiliationRepository extends JpaRepository<UserSchoo
 
     @Query(
         """
+            SELECT COUNT(DISTINCT a.user.id)
+            FROM UserSchoolAffiliation a
+            WHERE a.school.id = :schoolId AND a.active = true
+            """
+    )
+    long countActiveUsersBySchoolId(@Param("schoolId") Long schoolId);
+
+    @Query(
+        """
+            SELECT COUNT(DISTINCT a.user.id)
+            FROM UserSchoolAffiliation a
+            WHERE a.school.id = :schoolId AND a.active = true AND a.role = :role
+            """
+    )
+    long countActiveUsersBySchoolIdAndRole(
+        @Param("schoolId") Long schoolId,
+        @Param("role") friasoft.gn.schoolapp.entity.auth.User.UserRole role
+    );
+
+    @Query(
+        """
             SELECT a FROM UserSchoolAffiliation a JOIN FETCH a.school s
             WHERE a.id = :id AND a.user.id = :userId
             """

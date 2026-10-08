@@ -10,7 +10,9 @@ import friasoft.gn.schoolapp.dto.SubjectAdditionRequestDtos.RequestDetail;
 import friasoft.gn.schoolapp.dto.SubjectAdditionRequestDtos.RequestSummary;
 import friasoft.gn.schoolapp.dto.request.TenantActiveUpdateRequest;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto;
+import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolDetailDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolRowDto;
+import friasoft.gn.schoolapp.dto.response.SuperAdminTenantDetailDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminTenantRowDto;
 import friasoft.gn.schoolapp.entity.school.Region;
 import friasoft.gn.schoolapp.entity.school.Subject;
@@ -26,7 +28,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("super-admin")
@@ -43,6 +44,15 @@ public class SuperAdminController {
     @GetMapping("/tenants")
     public List<SuperAdminTenantRowDto> listTenantsWithSchools() {
         return superAdminService.listTenantsWithSchools();
+    }
+
+    @GetMapping("/tenants/{id}")
+    public SuperAdminTenantDetailDto getTenantDetail(@PathVariable Long id) {
+        try {
+            return superAdminService.getTenantDetail(id);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
+        }
     }
 
     @PatchMapping("/tenants/{id}/active/{active}")
@@ -63,6 +73,15 @@ public class SuperAdminController {
     @GetMapping("/schools")
     public List<SuperAdminSchoolRowDto> listSchools() {
         return superAdminService.listSchools();
+    }
+
+    @GetMapping("/schools/{id}")
+    public SuperAdminSchoolDetailDto getSchoolDetail(@PathVariable Long id) {
+        try {
+            return superAdminService.getSchoolDetail(id);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
+        }
     }
 
     /** P2/P3 — agrégats écoles/élèves par région et par ville (+ coords pour carte). */
@@ -134,15 +153,23 @@ public class SuperAdminController {
 
     // —— Matières (référentiel global) ——
 
+    @GetMapping("/class-level-groups")
+    public List<friasoft.gn.schoolapp.dto.SubjectDtos.LevelGroupOption> listLevelGroupOptions() {
+        return subjectService.listLevelGroupOptions();
+    }
+
     @GetMapping("/subjects")
     public List<Subject> listGlobalSubjects() {
         return subjectService.listGlobalSubjects();
     }
 
     @PostMapping("/subjects")
-    public Subject createGlobalSubject(@RequestBody Map<String, String> body) {
+    public Subject createGlobalSubject(@RequestBody friasoft.gn.schoolapp.dto.SubjectDtos.GlobalSubjectWriteRequest body) {
         try {
-            return subjectService.createGlobal(body.get("code"), body.get("name"));
+            if (body == null) {
+                throw new IllegalArgumentException("Corps de requête obligatoire.");
+            }
+            return subjectService.createGlobal(body.code(), body.name(), body.levelGroupCodes());
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
@@ -151,9 +178,15 @@ public class SuperAdminController {
     }
 
     @PutMapping("/subjects/{id}")
-    public Subject updateGlobalSubject(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public Subject updateGlobalSubject(
+        @PathVariable Long id,
+        @RequestBody friasoft.gn.schoolapp.dto.SubjectDtos.GlobalSubjectWriteRequest body
+    ) {
         try {
-            return subjectService.updateGlobal(id, body.get("code"), body.get("name"));
+            if (body == null) {
+                throw new IllegalArgumentException("Corps de requête obligatoire.");
+            }
+            return subjectService.updateGlobal(id, body.code(), body.name(), body.levelGroupCodes());
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(
                 e.getMessage() != null && e.getMessage().contains("introuvable")

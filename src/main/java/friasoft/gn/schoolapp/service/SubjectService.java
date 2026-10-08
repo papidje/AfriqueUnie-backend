@@ -195,27 +195,10 @@ public class SubjectService {
         }
         input.setId(null);
         input.setSchool(null);
-        Set<ClassLevelGroup> groups;
-        if (levelGroupCodes == null || levelGroupCodes.isEmpty()) {
-            groups = new HashSet<>(classLevelGroupRepository.findAll());
-        } else {
-            groups = new HashSet<>();
-            for (String raw : levelGroupCodes) {
-                if (raw == null || raw.isBlank()) {
-                    continue;
-                }
-                String code = raw.trim().toUpperCase();
-                ClassLevelGroup g = classLevelGroupRepository.findByCode(code)
-                    .orElseThrow(() -> new IllegalArgumentException("Groupe de niveau inconnu : " + code));
-                groups.add(g);
-            }
-            if (groups.isEmpty()) {
-                throw new IllegalArgumentException("Au moins un cycle scolaire est obligatoire.");
-            }
-        }
-        input.replaceLevelGroups(groups);
+        input.replaceLevelGroups(resolveLevelGroups(levelGroupCodes, true));
         try {
-            return repository.save(input);
+            Subject saved = repository.save(input);
+            return repository.findByIdWithLevelGroups(saved.getId()).orElse(saved);
         } catch (DataIntegrityViolationException e) {
             throw new IllegalStateException("Code matière déjà utilisé.", e);
         }
@@ -223,7 +206,15 @@ public class SubjectService {
 
     @Transactional
     public Subject updateGlobal(Long id, String codeRaw, String nameRaw) {
-        Subject existing = repository.findById(id)
+        return updateGlobal(id, codeRaw, nameRaw, null);
+    }
+
+    /**
+     * @param levelGroupCodes si {@code null} → cycles inchangés ; sinon remplace (au moins un code).
+     */
+    @Transactional
+    public Subject updateGlobal(Long id, String codeRaw, String nameRaw, List<String> levelGroupCodes) {
+        Subject existing = repository.findByIdWithLevelGroups(id)
             .orElseThrow(() -> new IllegalArgumentException("Matière introuvable."));
         if (existing.getSchool() != null) {
             throw new IllegalArgumentException("Cette matière n’appartient pas au référentiel global.");
@@ -240,11 +231,57 @@ public class SubjectService {
         }
         existing.setCode(input.getCode());
         existing.setName(input.getName());
+        if (levelGroupCodes != null) {
+            existing.replaceLevelGroups(resolveLevelGroups(levelGroupCodes, false));
+        }
         try {
-            return repository.save(existing);
+            Subject saved = repository.save(existing);
+            return repository.findByIdWithLevelGroups(saved.getId()).orElse(saved);
         } catch (DataIntegrityViolationException e) {
             throw new IllegalStateException("Code matière déjà utilisé.", e);
         }
+    }
+
+    /**
+     * @param allowAllIfNull si true et {@code levelGroupCodes == null} → tous les cycles ;
+     *                       une liste vide est toujours refusée.
+     */
+    private Set<ClassLevelGroup> resolveLevelGroups(List<String> levelGroupCodes, boolean allowAllIfNull) {
+        if (levelGroupCodes == null) {
+            if (!allowAllIfNull) {
+                throw new IllegalArgumentException("Sélectionnez au moins un cycle scolaire.");
+            }
+            List<ClassLevelGroup> all = classLevelGroupRepository.findAll();
+            if (all.isEmpty()) {
+                throw new IllegalStateException("Aucun cycle scolaire n’est défini dans le référentiel.");
+            }
+            return new HashSet<>(all);
+        }
+        Set<ClassLevelGroup> groups = new HashSet<>();
+        for (String raw : levelGroupCodes) {
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            String code = raw.trim().toUpperCase();
+            ClassLevelGroup g = classLevelGroupRepository.findByCode(code)
+                .orElseThrow(() -> new IllegalArgumentException("Groupe de niveau inconnu : " + code));
+            groups.add(g);
+        }
+        if (groups.isEmpty()) {
+            throw new IllegalArgumentException("Sélectionnez au moins un cycle scolaire.");
+        }
+        return groups;
+    }
+
+    @Transactional(readOnly = true)
+    public List<friasoft.gn.schoolapp.dto.SubjectDtos.LevelGroupOption> listLevelGroupOptions() {
+        return classLevelGroupRepository.findAll().stream()
+            .sorted(java.util.Comparator.comparing(
+                ClassLevelGroup::getCode,
+                java.util.Comparator.nullsLast(String::compareTo)
+            ))
+            .map(g -> new friasoft.gn.schoolapp.dto.SubjectDtos.LevelGroupOption(g.getCode(), g.getName()))
+            .toList();
     }
 
     @Transactional

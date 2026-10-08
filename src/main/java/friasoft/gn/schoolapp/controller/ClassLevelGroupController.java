@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static friasoft.gn.schoolapp.security.SchoolUiSecurityExpressions.READ;
 import static friasoft.gn.schoolapp.security.SchoolUiSecurityExpressions.WRITE;
 
 @RestController
@@ -18,7 +17,7 @@ public class ClassLevelGroupController {
 
     private ClassLevelGroupService service;
 
-    @PreAuthorize(READ)
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','DIRECTOR','STAFF','TEACHER')")
     @GetMapping
     public List<ClassLevelGroup> getAll() {
         return service.findAll();

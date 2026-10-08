@@ -5,7 +5,10 @@ import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoCityStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoRegionStatsDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminGeoStatsDto.GeoTotalsDto;
+import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolCardDto;
+import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolDetailDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminSchoolRowDto;
+import friasoft.gn.schoolapp.dto.response.SuperAdminTenantDetailDto;
 import friasoft.gn.schoolapp.dto.response.SuperAdminTenantRowDto;
 import friasoft.gn.schoolapp.dto.response.TenantAdminSummaryDto;
 import friasoft.gn.schoolapp.dto.response.TenantSchoolSummaryDto;
@@ -13,13 +16,17 @@ import friasoft.gn.schoolapp.entity.auth.User;
 import friasoft.gn.schoolapp.entity.school.City;
 import friasoft.gn.schoolapp.entity.school.Region;
 import friasoft.gn.schoolapp.entity.school.School;
+import friasoft.gn.schoolapp.entity.school.SchoolYear;
 import friasoft.gn.schoolapp.entity.tenant.Tenant;
 import friasoft.gn.schoolapp.repository.ICityRepository;
 import friasoft.gn.schoolapp.repository.IRegionRepository;
+import friasoft.gn.schoolapp.repository.ISchoolClassRepository;
+import friasoft.gn.schoolapp.repository.ISchoolYearRepository;
 import friasoft.gn.schoolapp.repository.IStudentRepository;
 import friasoft.gn.schoolapp.repository.SchoolRepository;
 import friasoft.gn.schoolapp.repository.TenantRepository;
 import friasoft.gn.schoolapp.repository.UserRepository;
+import friasoft.gn.schoolapp.repository.UserSchoolAffiliationRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +53,9 @@ public class SuperAdminService {
     private final ICityRepository cityRepository;
     private final IRegionRepository regionRepository;
     private final UserRepository userRepository;
+    private final ISchoolClassRepository schoolClassRepository;
+    private final ISchoolYearRepository schoolYearRepository;
+    private final UserSchoolAffiliationRepository affiliationRepository;
 
     @Transactional(readOnly = true)
     public List<SuperAdminTenantRowDto> listTenantsWithSchools() {
@@ -188,6 +198,127 @@ public class SuperAdminService {
             fullname = u.getEmail() != null ? u.getEmail() : "Administrateur";
         }
         return new TenantAdminSummaryDto(u.getId(), fullname, u.getEmail());
+    }
+
+    @Transactional(readOnly = true)
+    public SuperAdminTenantDetailDto getTenantDetail(Long tenantId) {
+        Tenant tenant = tenantRepository.findById(tenantId)
+            .orElseThrow(() -> new IllegalArgumentException("Tenant introuvable."));
+        List<School> schools = schoolRepository.findByTenantIdOrderByIdAsc(tenantId);
+        Map<Long, Long> studentsBySchool = studentsBySchoolIdMap();
+        long studentCount = schools.stream()
+            .mapToLong(s -> studentsBySchool.getOrDefault(s.getId(), 0L))
+            .sum();
+        long activeSchoolCount = schools.stream().filter(School::isActive).count();
+        List<SuperAdminSchoolCardDto> cards = schools.stream()
+            .sorted(Comparator.comparing(School::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+            .map(s -> toSchoolCard(s, studentsBySchool.getOrDefault(s.getId(), 0L)))
+            .toList();
+        return new SuperAdminTenantDetailDto(
+            tenant.getId(),
+            tenant.getName(),
+            tenant.getAddress(),
+            tenant.getLogo(),
+            tenant.getCreatedAt(),
+            tenant.isActive(),
+            tenant.getSubscriptionEndsOn(),
+            studentCount,
+            schools.size(),
+            activeSchoolCount,
+            adminsByTenantId().getOrDefault(tenantId, List.of()),
+            cards
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public SuperAdminSchoolDetailDto getSchoolDetail(Long schoolId) {
+        School school = schoolRepository.findById(schoolId)
+            .orElseThrow(() -> new IllegalArgumentException("École introuvable."));
+        Tenant tenant = school.getTenantId() == null
+            ? null
+            : tenantRepository.findById(school.getTenantId()).orElse(null);
+        City city = school.getCity();
+        Region region = city != null ? city.getRegion() : null;
+
+        Map<Long, Long> studentsBySchool = studentsBySchoolIdMap();
+        long studentCount = studentsBySchool.getOrDefault(schoolId, 0L);
+        long activeYearStudentCount = studentRepository.countStudentsActiveSchoolYear(schoolId);
+        long classCount = schoolClassRepository.countActiveSchoolYearClasses(schoolId);
+        long capacity = schoolClassRepository.sumCapacityActiveSchoolYear(schoolId);
+        long staffCount = affiliationRepository.countActiveUsersBySchoolId(schoolId);
+        long teacherCount = affiliationRepository.countActiveUsersBySchoolIdAndRole(
+            schoolId,
+            User.UserRole.TEACHER
+        );
+
+        List<SchoolYear> years = schoolYearRepository.findBySchoolId(schoolId).stream()
+            .sorted(Comparator
+                .comparing(SchoolYear::isActive).reversed()
+                .thenComparing(SchoolYear::getId, Comparator.reverseOrder()))
+            .toList();
+        String activeYearLabel = years.stream()
+            .filter(SchoolYear::isActive)
+            .map(SchoolYear::getLabel)
+            .findFirst()
+            .orElse(null);
+
+        return new SuperAdminSchoolDetailDto(
+            school.getId(),
+            school.getName(),
+            school.getAdress(),
+            school.getContact(),
+            school.getOpenDate(),
+            school.getLogo(),
+            school.isActive(),
+            school.getCreated_at(),
+            school.getTenantId(),
+            tenant != null ? tenant.getName() : null,
+            tenant != null && tenant.isActive(),
+            city != null ? city.getId() : null,
+            city != null ? city.getName() : null,
+            region != null ? region.getName() : null,
+            studentCount,
+            activeYearStudentCount,
+            classCount,
+            capacity,
+            staffCount,
+            teacherCount,
+            activeYearLabel,
+            years.stream()
+                .map(y -> new SuperAdminSchoolDetailDto.SchoolYearSummaryDto(y.getId(), y.getLabel(), y.isActive()))
+                .toList()
+        );
+    }
+
+    private SuperAdminSchoolCardDto toSchoolCard(School s, long studentCount) {
+        City city = s.getCity();
+        Region region = city != null ? city.getRegion() : null;
+        long activeYearStudentCount = studentRepository.countStudentsActiveSchoolYear(s.getId());
+        long classCount = schoolClassRepository.countActiveSchoolYearClasses(s.getId());
+        String activeYearLabel = schoolYearRepository
+            .findFirstBySchoolIdAndActiveTrueOrderByIdDesc(s.getId())
+            .map(SchoolYear::getLabel)
+            .orElse(null);
+        return new SuperAdminSchoolCardDto(
+            s.getId(),
+            s.getName(),
+            s.getLogo(),
+            s.isActive(),
+            city != null ? city.getName() : null,
+            region != null ? region.getName() : null,
+            studentCount,
+            activeYearStudentCount,
+            classCount,
+            activeYearLabel
+        );
+    }
+
+    private Map<Long, Long> studentsBySchoolIdMap() {
+        Map<Long, Long> studentsBySchool = new HashMap<>();
+        for (Object[] row : studentRepository.countStudentsGroupedBySchoolId()) {
+            studentsBySchool.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        return studentsBySchool;
     }
 
     @Transactional(readOnly = true)
