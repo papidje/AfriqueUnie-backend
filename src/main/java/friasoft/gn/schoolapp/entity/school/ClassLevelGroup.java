@@ -37,6 +37,10 @@ public class ClassLevelGroup {
     @Column(nullable = false, length = 100)
     private String name;
 
+    /** Ordre d’affichage pédagogique (administrable). */
+    @Column(name = "sort_order", nullable = false)
+    private int sortOrder = 100;
+
     @JsonIgnore
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL)
     @ToString.Exclude

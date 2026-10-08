@@ -90,4 +90,8 @@ public interface ISchoolClassRepository extends JpaRepository<SchoolClass, Long>
           and y.active = true
         """)
     long countByIdsAndSchoolActiveYear(@Param("schoolId") Long schoolId, @Param("ids") Collection<Long> ids);
+
+    long countByLevel_Id(Long levelId);
+
+    boolean existsByLevel_Id(Long levelId);
 }

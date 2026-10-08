@@ -74,4 +74,10 @@ public interface ISubjectRepository extends JpaRepository<Subject, Long> {
         "select s from Subject s where s.school is null and lower(s.code) = lower(:code)"
     )
     List<Subject> findGlobalByCode(@Param("code") String code);
+
+    @Query("select count(s) from Subject s join s.levelGroups g where g.id = :groupId")
+    long countByLevelGroupId(@Param("groupId") Long groupId);
+
+    @Query("select case when count(s) > 0 then true else false end from Subject s join s.levelGroups g where g.id = :groupId")
+    boolean existsByLevelGroupId(@Param("groupId") Long groupId);
 }

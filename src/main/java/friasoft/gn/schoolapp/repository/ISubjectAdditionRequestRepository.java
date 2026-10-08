@@ -70,4 +70,8 @@ public interface ISubjectAdditionRequestRepository extends JpaRepository<Subject
         where r.id = :id
         """)
     Optional<SubjectAdditionRequest> findByIdWithRefs(@Param("id") Long id);
+
+    long countByClassLevel_Id(Long classLevelId);
+
+    boolean existsByClassLevel_Id(Long classLevelId);
 }

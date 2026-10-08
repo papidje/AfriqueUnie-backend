@@ -19,4 +19,8 @@ public interface ICityRepository extends JpaRepository<City, Long> {
     boolean existsByCodeIgnoreCase(String code);
 
     boolean existsByCodeIgnoreCaseAndIdNot(String code, Long id);
+
+    long countByRegion_Id(Long regionId);
+
+    boolean existsByRegion_Id(Long regionId);
 }

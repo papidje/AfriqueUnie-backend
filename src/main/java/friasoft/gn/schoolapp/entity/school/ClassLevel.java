@@ -24,6 +24,10 @@ public class ClassLevel {
     @Column(nullable = false, length = 100)
     private String name;
 
+    /** Ordre d’affichage pédagogique (administrable). */
+    @Column(name = "sort_order", nullable = false)
+    private int sortOrder = 1000;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
     @JsonIgnoreProperties(value = {"hibernateLazyInitializer", "handler", "levels"}, allowSetters = true)

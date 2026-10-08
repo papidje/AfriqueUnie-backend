@@ -5,65 +5,81 @@ import friasoft.gn.schoolapp.entity.school.ClassLevelGroup;
 import friasoft.gn.schoolapp.entity.school.SchoolClass;
 
 import java.util.Comparator;
-import java.util.Map;
 
 /**
- * Ordre pédagogique d’affichage des groupes / niveaux (indépendant des IDs d’insertion).
+ * Ordre pédagogique d’affichage des groupes / niveaux.
+ * Priorité à {@code sortOrder} (administrable) ; repli sur le code alphabétique.
  */
 public final class ClassLevelOrdering {
 
-    private static final Map<String, Integer> GROUP_ORDER = Map.of(
-        "PRE", 1,
-        "MAT", 2,
-        "PRI", 3,
-        "COL", 4,
-        "LYC", 5
-    );
-
-    private static final Map<String, Integer> LEVEL_ORDER = Map.ofEntries(
-        Map.entry("GAR", 10),
-        Map.entry("PS", 20),
-        Map.entry("MS", 30),
-        Map.entry("GS", 40),
-        Map.entry("CP1", 50),
-        Map.entry("CP2", 60),
-        Map.entry("CE1", 70),
-        Map.entry("CE2", 80),
-        Map.entry("CM1", 90),
-        Map.entry("CM2", 100),
-        Map.entry("7E", 110),
-        Map.entry("8E", 120),
-        Map.entry("9E", 130),
-        Map.entry("10E", 140),
-        Map.entry("11E", 150),
-        Map.entry("12E", 160),
-        Map.entry("TLE", 170)
-    );
-
     private ClassLevelOrdering() {}
 
+    public static int groupSortKey(ClassLevelGroup group) {
+        if (group == null) {
+            return Integer.MAX_VALUE;
+        }
+        return group.getSortOrder();
+    }
+
     public static int groupSortKey(String groupCode) {
+        // Conservé pour les appels qui n’ont que le code (ex. options matières).
         if (groupCode == null || groupCode.isBlank()) {
             return Integer.MAX_VALUE;
         }
-        return GROUP_ORDER.getOrDefault(groupCode, Integer.MAX_VALUE);
+        return switch (groupCode.trim().toUpperCase()) {
+            case "PRE" -> 1;
+            case "MAT" -> 2;
+            case "PRI" -> 3;
+            case "COL" -> 4;
+            case "LYC" -> 5;
+            default -> Integer.MAX_VALUE;
+        };
+    }
+
+    public static int levelSortKey(ClassLevel level) {
+        if (level == null) {
+            return Integer.MAX_VALUE;
+        }
+        return level.getSortOrder();
     }
 
     public static int levelSortKey(String levelCode) {
         if (levelCode == null || levelCode.isBlank()) {
             return Integer.MAX_VALUE;
         }
-        return LEVEL_ORDER.getOrDefault(levelCode, Integer.MAX_VALUE);
+        return switch (levelCode.trim().toUpperCase()) {
+            case "GAR" -> 10;
+            case "PS" -> 20;
+            case "MS" -> 30;
+            case "GS" -> 40;
+            case "CP1" -> 50;
+            case "CP2" -> 60;
+            case "CE1" -> 70;
+            case "CE2" -> 80;
+            case "CM1" -> 90;
+            case "CM2" -> 100;
+            case "7E" -> 110;
+            case "8E" -> 120;
+            case "9E" -> 130;
+            case "10E" -> 140;
+            case "11E" -> 150;
+            case "12E" -> 160;
+            case "TLE" -> 170;
+            default -> Integer.MAX_VALUE;
+        };
     }
 
     public static Comparator<ClassLevel> classLevelComparator() {
         return Comparator
-            .comparingInt((ClassLevel lv) -> {
-                ClassLevelGroup g = lv.getGroup();
-                return groupSortKey(g != null ? g.getCode() : null);
-            })
-            .thenComparingInt(lv -> levelSortKey(lv.getCode()))
+            .comparingInt((ClassLevel lv) -> groupSortKey(lv.getGroup()))
+            .thenComparingInt(ClassLevelOrdering::levelSortKey)
             .thenComparing(lv -> lv.getCode() != null ? lv.getCode() : "", String::compareToIgnoreCase);
+    }
+
+    public static Comparator<ClassLevelGroup> classLevelGroupComparator() {
+        return Comparator
+            .comparingInt((ClassLevelGroup g) -> groupSortKey(g))
+            .thenComparing(g -> g.getCode() != null ? g.getCode() : "", String::compareToIgnoreCase);
     }
 
     public static Comparator<SchoolClass> schoolClassComparator() {

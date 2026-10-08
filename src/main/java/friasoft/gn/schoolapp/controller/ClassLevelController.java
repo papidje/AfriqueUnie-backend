@@ -9,8 +9,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 import static friasoft.gn.schoolapp.security.SchoolUiSecurityExpressions.READ;
-import static friasoft.gn.schoolapp.security.SchoolUiSecurityExpressions.WRITE;
 
+/**
+ * Lecture du référentiel des niveaux pour l’UI école.
+ * Écriture réservée au super-admin ({@code /super-admin/class-levels}).
+ */
 @RestController
 @RequestMapping("/api/class-levels")
 @AllArgsConstructor
@@ -28,11 +31,5 @@ public class ClassLevelController {
     @GetMapping("/group/{groupCode}")
     public List<ClassLevel> getByGroup(@PathVariable String groupCode) {
         return service.findByGroup(groupCode);
-    }
-
-    @PreAuthorize(WRITE)
-    @PostMapping
-    public ClassLevel create(@RequestBody ClassLevel level) {
-        return service.save(level);
     }
 }

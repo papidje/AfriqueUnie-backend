@@ -32,4 +32,8 @@ public interface IFeeStructureRepository extends JpaRepository<FeeStructure, Lon
     boolean existsByClassLevel_IdAndSchoolYear_Id(Long classLevelId, Long schoolYearId);
 
     Optional<FeeStructure> findByClassLevel_IdAndSchoolYear_Id(Long classLevelId, Long schoolYearId);
+
+    long countByClassLevel_Id(Long classLevelId);
+
+    boolean existsByClassLevel_Id(Long classLevelId);
 }

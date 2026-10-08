@@ -17,4 +17,6 @@ public interface IRegionRepository extends JpaRepository<Region, Long> {
     Optional<Region> findByCodeIgnoreCase(String code);
 
     boolean existsByCodeIgnoreCase(String code);
+
+    boolean existsByCodeIgnoreCaseAndIdNot(String code, Long id);
 }

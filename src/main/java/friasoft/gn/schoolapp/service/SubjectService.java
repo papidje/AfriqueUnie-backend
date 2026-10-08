@@ -276,10 +276,7 @@ public class SubjectService {
     @Transactional(readOnly = true)
     public List<friasoft.gn.schoolapp.dto.SubjectDtos.LevelGroupOption> listLevelGroupOptions() {
         return classLevelGroupRepository.findAll().stream()
-            .sorted(java.util.Comparator.comparing(
-                ClassLevelGroup::getCode,
-                java.util.Comparator.nullsLast(String::compareTo)
-            ))
+            .sorted(friasoft.gn.schoolapp.util.ClassLevelOrdering.classLevelGroupComparator())
             .map(g -> new friasoft.gn.schoolapp.dto.SubjectDtos.LevelGroupOption(g.getCode(), g.getName()))
             .toList();
     }

@@ -8,25 +8,22 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static friasoft.gn.schoolapp.security.SchoolUiSecurityExpressions.WRITE;
+import static friasoft.gn.schoolapp.security.SchoolUiSecurityExpressions.READ;
 
+/**
+ * Lecture du référentiel des cycles pour l’UI école.
+ * Écriture réservée au super-admin ({@code /super-admin/class-level-groups}).
+ */
 @RestController
 @RequestMapping("/api/class-level-groups")
 @AllArgsConstructor
 public class ClassLevelGroupController {
 
-    private ClassLevelGroupService service;
+    private final ClassLevelGroupService service;
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_ECOLE','DIRECTOR','STAFF','TEACHER')")
+    @PreAuthorize(READ)
     @GetMapping
     public List<ClassLevelGroup> getAll() {
         return service.findAll();
     }
-
-    @PreAuthorize(WRITE)
-    @PostMapping
-    public ClassLevelGroup create(@RequestBody ClassLevelGroup group) {
-        return service.save(group);
-    }
 }
-

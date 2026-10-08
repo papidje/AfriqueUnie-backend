@@ -15,6 +15,14 @@ public interface IClassLevelRepository extends JpaRepository<ClassLevel, Long> {
 
     Optional<ClassLevel> findByCode(String code);
 
+    boolean existsByCodeIgnoreCase(String code);
+
+    boolean existsByCodeIgnoreCaseAndIdNot(String code, Long id);
+
+    long countByGroup_Id(Long groupId);
+
+    boolean existsByGroup_Id(Long groupId);
+
     @Query("""
         select lv from ClassLevel lv
         left join fetch lv.group

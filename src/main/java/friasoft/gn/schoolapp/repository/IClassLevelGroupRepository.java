@@ -6,8 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-// ClassLevelGroupRepository.java
 @Repository
 public interface IClassLevelGroupRepository extends JpaRepository<ClassLevelGroup, Long> {
     Optional<ClassLevelGroup> findByCode(String code);
+
+    boolean existsByCodeIgnoreCase(String code);
+
+    boolean existsByCodeIgnoreCaseAndIdNot(String code, Long id);
 }
